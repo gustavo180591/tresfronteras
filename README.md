@@ -1,148 +1,137 @@
-📌 Descripción del proyecto
+# 🏆 Sistema de Gestión Tresfronteras
 
-tresfronteras es un sistema en PHP 7.4 + MySQL diseñado para gestionar un evento deportivo.
-Incluye:
+## 📌 Descripción del Proyecto
 
-Dashboard principal con métricas del evento.
+`tresfronteras` es un sistema en **PHP 7.4 + MySQL** diseñado para la gestión integral de eventos deportivos.
 
-Gestión completa del fixture de partidos.
+### Características Principales
 
-Módulo de pedidos de fotos con estados pagado/entregado.
+- Dashboard principal con métricas en tiempo real
+- Gestión completa del fixture de partidos
+- Módulo de pedidos de fotos con seguimiento de estados (pagado/entregado)
+- Control de recaudación con desglose por formas de pago
+- Búsqueda global rápida y eficiente
+- Exportación de datos a CSV
+- Interfaz intuitiva y optimizada para uso en eventos en vivo
 
-Recaudación total y por forma de pago.
+## � Estructura del Proyecto
 
-Búsqueda global rápida.
-
-Exportación a CSV.
-
-Interfaz simple, veloz y pensada para uso en un evento real.
-
-📂 Estructura de carpetas
+```
 tresfronteras/
 │
-├── public/
-│   ├── index.php
-│   ├── css/
+├── public/                   # Archivos públicos accesibles
+│   ├── index.php            # Punto de entrada principal
+│   ├── css/                 # Hojas de estilo
 │   │   └── style.css
-│   ├── js/
+│   ├── js/                  # Scripts del lado del cliente
 │   │   └── app.js
-│   └── assets/
+│   └── assets/              # Recursos estáticos
 │       └── logo.png
 │
-├── app/
-│   ├── controllers/
+├── app/                     # Lógica de la aplicación
+│   ├── controllers/         # Controladores
 │   │   ├── DashboardController.php
 │   │   ├── PartidosController.php
 │   │   ├── PedidosController.php
 │   │   └── RecaudacionController.php
 │   │
-│   ├── models/
+│   ├── models/              # Modelos de datos
 │   │   ├── Partido.php
 │   │   ├── Pedido.php
 │   │   ├── Categoria.php
 │   │   ├── TipoTorneo.php
 │   │   └── Configuracion.php
 │   │
-│   └── views/
-│       ├── layout/
+│   └── views/               # Vistas de la aplicación
+│       ├── layout/          # Plantillas base
 │       │   ├── header.php
 │       │   ├── navbar.php
 │       │   └── footer.php
-│       │
-│       ├── dashboard/
+│       ├── dashboard/       # Vistas del panel
 │       │   └── index.php
-│       │
-│       ├── partidos/
+│       ├── partidos/        # Gestión de partidos
 │       │   ├── index.php
 │       │   ├── crear.php
 │       │   └── editar.php
-│       │
-│       ├── pedidos/
+│       ├── pedidos/         # Gestión de pedidos
 │       │   ├── index.php
 │       │   ├── crear.php
 │       │   └── editar.php
-│       │
-│       └── recaudacion/
+│       └── recaudacion/     # Control de ingresos
 │           └── index.php
 │
-├── config/
-│   ├── database.php
-│   └── config.php
+├── config/                  # Configuraciones
+│   ├── database.php         # Configuración de la base de datos
+│   └── config.php           # Configuración general
 │
-└── sql/
-    └── schema.sql
+└── sql/                     # Esquemas SQL
+    └── schema.sql           # Estructura completa de la base de datos
+```
 
-📌 Archivos principales
-public/index.php
+## � Archivos Principales
 
-Punto de entrada. Enruta a los controladores.
+### Punto de Entrada
+- `public/index.php` - Enruta las peticiones a los controladores correspondientes
 
-config/database.php
+### Configuración
+- `config/database.php` - Configuración de conexión a MySQL usando PDO
+- `config/config.php` - Configuraciones generales de la aplicación
 
-Conexión MySQL (PDO) lista para incluir en modelos.
+### Vistas Principales
+- `app/views/layout/header.php` - Cabecera común con estilos y scripts
+- `app/views/layout/navbar.php` - Menú de navegación principal
 
-app/views/layout/header.php
+### Controladores
+- `DashboardController.php` - Gestiona el panel principal con estadísticas
+- `PartidosController.php` - CRUD de partidos y lógica de torneos
+- `PedidosController.php` - Gestión de pedidos con exportación CSV
+- `RecaudacionController.php` - Control de ingresos y reportes
 
-Contiene <head>, estilos, scripts iniciales y barra global de búsqueda.
+### Base de Datos
+- `sql/schema.sql` - Estructura completa con las tablas:
+  - `categorias`
+  - `tipos_torneo`
+  - `partidos`
+  - `pedidos_fotos`
+  - `configuracion`
 
-app/views/layout/navbar.php
+## 🚀 Instalación
 
-Menú principal: Dashboard / Fixture / Pedidos / Recaudación.
+1. Clonar el repositorio en el servidor local:
+   ```bash
+   git clone [url-del-repositorio] tresfronteras
+   ```
 
-DashboardController.php
+2. Crear una base de datos MySQL e importar la estructura:
+   ```bash
+   mysql -u usuario -p nombre_base_de_datos < sql/schema.sql
+   ```
 
-Calcula totales y renderiza tarjetas del panel.
+3. Configurar las credenciales de la base de datos:
+   ```php
+   // config/database.php
+   define('DB_HOST', 'localhost');
+   define('DB_NAME', 'nombre_base_de_datos');
+   define('DB_USER', 'usuario');
+   define('DB_PASS', 'contraseña');
+   ```
 
-PartidosController.php
+4. Acceder a la aplicación desde el navegador:
+   ```
+   http://localhost/tresfronteras/public/
+   ```
 
-CRUD de partidos + lógica para torneos por puntos y eliminación.
+## 🎯 Objetivos del Sistema
 
-PedidosController.php
+Diseñado para ser rápido, confiable y simple, optimizado para uso en eventos deportivos:
 
-CRUD de pedidos + cambio rápido de estados + exportación CSV.
+- **Interfaz intuitiva** con botones grandes y accesibles
+- **Flujo de trabajo optimizado** para uso bajo presión
+- **Gestión visual** con códigos de colores claros para estados
+- **Búsqueda global** de acceso rápido
+- **Exportación rápida** de datos a CSV
+- **Diseño responsivo** que funciona en diferentes dispositivos
 
-RecaudacionController.php
+## 📄 Licencia
 
-Totales, filtros y exportación CSV.
-
-sql/schema.sql
-
-Contiene todas las tablas necesarias según el prompt:
-
-categorias
-
-tipos_torneo
-
-partidos
-
-pedidos_fotos
-
-configuracion
-
-▶️ Cómo iniciar el proyecto
-
-Clonar el repositorio en el servidor local.
-
-Crear base de datos MySQL e importar sql/schema.sql.
-
-Configurar credenciales en config/database.php.
-
-Acceder desde navegador:
-
-http://localhost/tresfronteras/public/
-
-🎯 Objetivo del sistema
-
-Ser una herramienta rápida, confiable y simple, optimizada para trabajar bajo presión durante un evento deportivo:
-
-Botones grandes
-
-Pocas acciones por pantalla
-
-Colores claros para estados
-
-Búsqueda global inmediata
-
-Exportación rápida a CSV
-
-Flujo limpio para cargar partidos y pedidos
+Este proyecto es de uso interno para el evento Tresfronteras.
