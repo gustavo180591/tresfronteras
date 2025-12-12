@@ -376,6 +376,13 @@ public function editar() {
         if (!$pedido) {
             throw new Exception('No se encontró el pedido con ID: ' . $pedidoId);
         }
+        
+        // Convertir la cadena de archivos en un array
+        if (!empty($pedido['archivos'])) {
+            $pedido['archivos'] = array_map('trim', explode(',', $pedido['archivos']));
+        } else {
+            $pedido['archivos'] = [];
+        }
 
         // Obtener partidos para el desplegable
         $stmt = $this->db->query("
