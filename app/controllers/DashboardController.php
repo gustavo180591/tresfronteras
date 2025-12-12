@@ -1,28 +1,32 @@
 <?php
 // app/controllers/DashboardController.php
 
-declare(strict_types=1);
-
 class DashboardController
 {
-    private PDO $db;
+    /**
+     * @var PDO
+     */
+    private $db;
 
     public function __construct()
     {
-        // Cargamos la conexión PDO
         require_once BASE_PATH . '/config/database.php';
+        require_once BASE_PATH . '/config/config.php';
+
         $this->db = getPDO();
     }
 
-    public function index(): void
+    public function index()
     {
         // Totales de partidos
         $stmt = $this->db->query('SELECT COUNT(*) AS total FROM partidos');
-        $totalPartidos = (int) $stmt->fetch()['total'];
+        $row = $stmt->fetch();
+        $totalPartidos = isset($row['total']) ? (int) $row['total'] : 0;
 
         // Totales de pedidos
         $stmt = $this->db->query('SELECT COUNT(*) AS total FROM pedidos_fotos');
-        $totalPedidos = (int) $stmt->fetch()['total'];
+        $row = $stmt->fetch();
+        $totalPedidos = isset($row['total']) ? (int) $row['total'] : 0;
 
         // Recaudación total
         $stmt = $this->db->query("
@@ -31,9 +35,10 @@ class DashboardController
             FROM pedidos_fotos
             WHERE estado_pago = 'pagado'
         ");
-        $recaudacionTotal = (float) $stmt->fetch()['total'];
+        $row = $stmt->fetch();
+        $recaudacionTotal = isset($row['total']) ? (float) $row['total'] : 0.0;
 
-        // Recaudación por forma de pago: efectivo
+        // Recaudación efectivo
         $stmt = $this->db->query("
             SELECT 
                 COALESCE(SUM(monto_total), 0) AS total
@@ -41,9 +46,10 @@ class DashboardController
             WHERE estado_pago = 'pagado'
               AND forma_pago = 'efectivo'
         ");
-        $recaudacionEfectivo = (float) $stmt->fetch()['total'];
+        $row = $stmt->fetch();
+        $recaudacionEfectivo = isset($row['total']) ? (float) $row['total'] : 0.0;
 
-        // Recaudación por forma de pago: transferencia
+        // Recaudación transferencia
         $stmt = $this->db->query("
             SELECT 
                 COALESCE(SUM(monto_total), 0) AS total
@@ -51,21 +57,21 @@ class DashboardController
             WHERE estado_pago = 'pagado'
               AND forma_pago = 'transferencia'
         ");
-        $recaudacionTransferencia = (float) $stmt->fetch()['total'];
+        $row = $stmt->fetch();
+        $recaudacionTransferencia = isset($row['total']) ? (float) $row['total'] : 0.0;
 
-        // Datos que vamos a mandar a la vista del dashboard
-        $data = [
-            'totalPartidos'          => $totalPartidos,
-            'totalPedidos'           => $totalPedidos,
-            'recaudacionTotal'       => $recaudacionTotal,
-            'recaudacionEfectivo'    => $recaudacionEfectivo,
+        $data = array(
+            'totalPartidos'            => $totalPartidos,
+            'totalPedidos'             => $totalPedidos,
+            'recaudacionTotal'         => $recaudacionTotal,
+            'recaudacionEfectivo'      => $recaudacionEfectivo,
             'recaudacionTransferencia' => $recaudacionTransferencia,
-        ];
+        );
 
-        // Hacemos disponibles las variables en la vista
         extract($data);
 
-        // Render del layout + vista del dashboard
+        $pageTitle = 'Dashboard - ' . (defined('EVENT_NAME') ? EVENT_NAME : 'Tresfronteras');
+
         require BASE_PATH . '/app/views/layout/header.php';
         require BASE_PATH . '/app/views/layout/navbar.php';
         require BASE_PATH . '/app/views/dashboard/index.php';

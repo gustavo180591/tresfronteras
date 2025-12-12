@@ -10,7 +10,7 @@ const DB_HOST = '127.0.0.1';
 const DB_PORT = 3306;
 const DB_NAME = 'tresfronteras';
 const DB_USER = 'tresuser';
-const DB_PASS = 'trespass123';
+const DB_PASS = 'nE/MKkv8YSXGAmZL36a6fw==';
 
 
 /**
