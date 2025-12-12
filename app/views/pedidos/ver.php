@@ -14,9 +14,21 @@ function formatCurrency($amount) {
 <div class="container-fluid py-4">
     <div class="d-flex justify-content-between align-items-center mb-4">
         <h1 class="h3">Detalles del Pedido #<?= str_pad($pedido['id'], 5, '0', STR_PAD_LEFT) ?></h1>
-        <div>
-            <a href="index.php?c=pedidos&a=index" class="btn btn-outline-secondary">
-                <i class="fas fa-arrow-left me-2"></i>Volver al listado
+        <div class="d-flex gap-2">
+            <?php if (isset($_SESSION['pdf_receipt_path'])): ?>
+                <a href="<?= $_SESSION['pdf_receipt_path'] ?>" target="_blank" class="btn btn-sm btn-success">
+                    <i class="fas fa-file-pdf me-1"></i> Descargar Comprobante
+                </a>
+                <?php unset($_SESSION['pdf_receipt_path']); ?>
+            <?php endif; ?>
+            <a href="index.php?c=pedidos&a=editar&id=<?= $pedido['id'] ?>" class="btn btn-sm btn-primary">
+                <i class="fas fa-edit me-1"></i> Editar
+            </a>
+            <a href="index.php?c=pedidos&a=generarComprobante&id=<?= $pedido['id'] ?>" class="btn btn-sm btn-success">
+                <i class="fas fa-file-pdf me-1"></i> Comprobante
+            </a>
+            <a href="index.php?c=pedidos&a=index" class="btn btn-sm btn-outline-secondary">
+                <i class="fas fa-arrow-left me-1"></i> Volver
             </a>
         </div>
     </div>

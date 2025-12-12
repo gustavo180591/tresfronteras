@@ -262,15 +262,12 @@ foreach ($pedidos as $pedido) {
                                     </td>
                                     <td class="text-end pe-3">
                                         <div class="d-flex justify-content-end gap-2">
-                                            <a
-                                                href="index.php?c=pedidos&a=ver&id=<?= (int) $pedido['id'] ?>"
-                                                class="btn btn-sm btn-outline-primary rounded-circle p-2"
-                                                data-bs-toggle="tooltip"
-                                                title="Ver detalles"
-                                            >
+                                            <a href="index.php?c=pedidos&a=ver&id=<?= $pedido['id'] ?>" class="btn btn-sm btn-outline-primary rounded-circle p-2" data-bs-toggle="tooltip" aria-label="Ver detalles" data-bs-original-title="Ver detalles">
                                                 <i class="fas fa-eye"></i>
                                             </a>
-
+                                            <a href="index.php?c=pedidos&a=generarComprobante&id=<?= $pedido['id'] ?>" class="btn btn-sm btn-outline-success rounded-circle p-2" data-bs-toggle="tooltip" aria-label="Descargar comprobante" data-bs-original-title="Descargar comprobante">
+                                                <i class="fas fa-file-pdf"></i>
+                                            </a>
                                             <a
                                                 href="index.php?c=pedidos&a=editar&id=<?= (int) $pedido['id'] ?>"
                                                 class="btn btn-sm btn-outline-secondary rounded-circle p-2"
