@@ -5,13 +5,13 @@ declare(strict_types=1);
 
 /**
  * Configuración de la conexión a la base de datos MySQL.
- * Ajustá estos valores según tu entorno local.
  */
 const DB_HOST = '127.0.0.1';
 const DB_PORT = 3306;
 const DB_NAME = 'tresfronteras';
-const DB_USER = 'root';
-const DB_PASS = '';
+const DB_USER = 'tresuser';
+const DB_PASS = 'trespass123';
+
 
 /**
  * Devuelve una instancia de PDO lista para usar.
