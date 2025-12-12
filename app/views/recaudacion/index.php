@@ -444,7 +444,7 @@ require_once BASE_PATH . '/app/views/layout/header.php';
                                         <tr>
                                             <td>
                                                 <div class="d-flex align-items-center">
-                                                    <span class="font-weight-bold">#<?= str_pad($pedido['id'], 5, '0', STR_PAD_LEFT) ?></span>
+                                                    <span class="font-weight-bold">#<?= str_pad((string)$pedido['id'], 5, '0', STR_PAD_LEFT) ?></span>
                                                     <?php if ($esNuevo): ?>
                                                         <span class="badge badge-danger ml-2">Nuevo</span>
                                                     <?php endif; ?>

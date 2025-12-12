@@ -683,7 +683,7 @@ public function eliminar()
             $estadoPago   = $pedido['estado_pago'] === 'pagado' ? 'PAGADO' : 'PENDIENTE';
             $estadoEnt    = isset($pedido['estado_entrega']) && $pedido['estado_entrega'] === 'entregado'
                             ? 'ENTREGADO'
-                            : 'NO ENTREGADO';
+                            : 'NO ENTREGADO AUN';
 
             $fechaPedido  = date('d/m/Y H:i', strtotime($pedido['fecha_pedido']));
             $fechaPartido = date('d/m/Y H:i', strtotime($pedido['fecha_hora']));

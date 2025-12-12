@@ -180,8 +180,33 @@ function label_estado_partido(string $estado): string {
                                 <?= htmlspecialchars(label_estado_partido($estado), ENT_QUOTES, 'UTF-8') ?>
                             </span>
                         </td>
-                        <td class="text-center">
-                            <?= htmlspecialchars($resultado, ENT_QUOTES, 'UTF-8') ?>
+                        <td class="text-center resultado-cell" 
+                            data-partido-id="<?= $id ?>" 
+                            data-goles-a="<?= $golesA ?? '' ?>" 
+                            data-goles-b="<?= $golesB ?? '' ?>"
+                            style="cursor: pointer; min-width: 100px;">
+                            <div class="resultado-display">
+                                <?php if ($golesA !== null && $golesB !== null): ?>
+                                    <?= (int)$golesA ?> - <?= (int)$golesB ?>
+                                <?php else: ?>
+                                    <span class="text-muted">-</span>
+                                <?php endif; ?>
+                            </div>
+                            <div class="resultado-edit d-none">
+                                <div class="input-group input-group-sm" style="width: 120px; margin: 0 auto;">
+                                    <input type="number" min="0" class="form-control form-control-sm goles-a" 
+                                           value="<?= $golesA ?? '0' ?>" style="text-align: center;">
+                                    <span class="input-group-text bg-white">-</span>
+                                    <input type="number" min="0" class="form-control form-control-sm goles-b" 
+                                           value="<?= $golesB ?? '0' ?>" style="text-align: center;">
+                                    <button class="btn btn-sm btn-success btn-guardar">
+                                        <i class="fas fa-check"></i>
+                                    </button>
+                                    <button class="btn btn-sm btn-outline-secondary btn-cancelar">
+                                        <i class="fas fa-times"></i>
+                                    </button>
+                                </div>
+                            </div>
                         </td>
                         <td class="text-end">
                             <!-- Acciones básicas: editar / eliminar (las implementaremos luego) -->
@@ -243,7 +268,128 @@ function label_estado_partido(string $estado): string {
     <?php endif; ?>
 </section>
 
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Make results editable on click
+    document.querySelectorAll('.resultado-cell').forEach(cell => {
+        const displayDiv = cell.querySelector('.resultado-display');
+        const editDiv = cell.querySelector('.resultado-edit');
+        const golesAInput = cell.querySelector('.goles-a');
+        const golesBInput = cell.querySelector('.goles-b');
+        const btnGuardar = cell.querySelector('.btn-guardar');
+        const btnCancelar = cell.querySelector('.btn-cancelar');
+        
+        // Show edit form
+        displayDiv.addEventListener('click', function(e) {
+            e.stopPropagation();
+            displayDiv.classList.add('d-none');
+            editDiv.classList.remove('d-none');
+            golesAInput.focus();
+        });
+        
+        // Save changes
+        btnGuardar.addEventListener('click', function(e) {
+            e.stopPropagation();
+            const partidoId = cell.dataset.partidoId;
+            const golesA = parseInt(golesAInput.value) || 0;
+            const golesB = parseInt(golesBInput.value) || 0;
+            
+            // Update UI immediately for better UX
+            displayDiv.innerHTML = `${golesA} - ${golesB}`;
+            displayDiv.classList.remove('d-none');
+            editDiv.classList.add('d-none');
+            
+            // Save to server
+            fetch('index.php?c=partidos&a=actualizarResultado', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                    'X-Requested-With': 'XMLHttpRequest'
+                },
+                body: `id=${partidoId}&goles_a=${golesA}&goles_b=${golesB}`
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (!data.success) {
+                    alert('Error al guardar el resultado: ' + (data.message || 'Error desconocido'));
+                    // Revert UI if there was an error
+                    displayDiv.innerHTML = (cell.dataset.golesA || '0') + ' - ' + (cell.dataset.golesB || '0');
+                } else {
+                    // Update data attributes
+                    cell.dataset.golesA = golesA;
+                    cell.dataset.golesB = golesB;
+                    
+                    // Update the status badge to "Finalizado"
+                    const statusBadge = cell.closest('tr').querySelector('.badge');
+                    if (statusBadge) {
+                        // Remove all badge classes and add the success class
+                        statusBadge.className = 'badge';
+                        statusBadge.classList.add('bg-success');
+                        statusBadge.textContent = 'Finalizado';
+                    }
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('Error al conectar con el servidor');
+                displayDiv.innerHTML = (cell.dataset.golesA || '0') + ' - ' + (cell.dataset.golesB || '0');
+            });
+        });
+        
+        // Cancel editing
+        btnCancelar.addEventListener('click', function(e) {
+            e.stopPropagation();
+            displayDiv.classList.remove('d-none');
+            editDiv.classList.add('d-none');
+        });
+        
+        // Handle Enter/Escape keys
+        function handleKeyDown(e) {
+            if (e.key === 'Enter') {
+                btnGuardar.click();
+            } else if (e.key === 'Escape') {
+                btnCancelar.click();
+            }
+        }
+        
+        golesAInput.addEventListener('keydown', handleKeyDown);
+        golesBInput.addEventListener('keydown', handleKeyDown);
+    });
+});
+</script>
+
 <style>
+/* Estilos para la edición en línea de resultados */
+.resultado-cell {
+    position: relative;
+}
+.resultado-edit {
+    position: absolute;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 10;
+    background: white;
+    padding: 5px;
+    border: 1px solid #dee2e6;
+    border-radius: 4px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+.goles-a, .goles-b {
+    width: 40px !important;
+    text-align: center;
+    -moz-appearance: textfield;
+}
+.goles-a::-webkit-outer-spin-button,
+.goles-a::-webkit-inner-spin-button,
+.goles-b::-webkit-outer-spin-button,
+.goles-b::-webkit-inner-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+}
+.btn-guardar, .btn-cancelar {
+    padding: 0.125rem 0.5rem;
+}
+
 /* Estilos para los filtros */
 #filters th {
     padding: 8px 4px;

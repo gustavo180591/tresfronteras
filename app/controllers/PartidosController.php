@@ -15,6 +15,15 @@ class PartidosController
 
         $this->db = getPDO();
     }
+    
+    /**
+     * Verifica si la petición es AJAX.
+     */
+    private function isAjax(): bool
+    {
+        return !empty($_SERVER['HTTP_X_REQUESTED_WITH']) && 
+               strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) === 'xmlhttprequest';
+    }
 
     /**
      * Listado de partidos (fixture) con paginación.
@@ -243,11 +252,16 @@ class PartidosController
 
     /**
      * Elimina un partido existente.
-     * URL: index.php?c=partidos&a=eliminar&id=X
+     * URL: index.php?c=partidos&a=eliminar&id=X (POST)
      */
     public function eliminar()
     {
-        // Verificar que se haya proporcionado un ID
+        // Verificar que sea una petición POST
+        if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+            header('Location: index.php?c=partidos&a=index');
+            exit;
+        }
+
         $id = filter_input(INPUT_GET, 'id', FILTER_VALIDATE_INT);
         if (!$id) {
             $_SESSION['mensaje_error'] = 'ID de partido no válido.';
@@ -256,29 +270,71 @@ class PartidosController
         }
 
         try {
-            // Iniciar transacción
-            $this->db->beginTransaction();
-
-            // 1. Primero eliminamos los pedidos de fotos asociados al partido
-            $stmt = $this->db->prepare("DELETE FROM pedidos_fotos WHERE partido_id = :id");
+            $stmt = $this->db->prepare('DELETE FROM partidos WHERE id = :id');
             $stmt->execute([':id' => $id]);
-
-            // 2. Luego eliminamos el partido
-            $stmt = $this->db->prepare("DELETE FROM partidos WHERE id = :id");
-            $stmt->execute([':id' => $id]);
-
-            // Confirmar la transacción
-            $this->db->commit();
 
             $_SESSION['mensaje_exito'] = 'El partido se ha eliminado correctamente.';
         } catch (PDOException $e) {
-            // Si hay un error, deshacer la transacción
-            $this->db->rollBack();
-            $_SESSION['mensaje_error'] = 'Error al intentar eliminar el partido: ' . $e->getMessage();
+            $_SESSION['mensaje_error'] = 'Error al eliminar el partido: ' . $e->getMessage();
         }
 
-        // Redirigir al listado
         header('Location: index.php?c=partidos&a=index');
         exit;
     }
+    
+   
+   /**
+ * Actualiza el resultado de un partido vía AJAX
+ * URL: index.php?c=partidos&a=actualizarResultado (POST)
+ */
+public function actualizarResultado()
+{
+    // Solo permitir peticiones AJAX
+    if (!$this->isAjax()) {
+        http_response_code(400);
+        echo json_encode(['success' => false, 'message' => 'Método no permitido']);
+        exit;
+    }
+
+    // Validar datos
+    $id = filter_input(INPUT_POST, 'id', FILTER_VALIDATE_INT);
+    $golesA = filter_input(INPUT_POST, 'goles_a', FILTER_VALIDATE_INT, ['options' => ['min_range' => 0]]);
+    $golesB = filter_input(INPUT_POST, 'goles_b', FILTER_VALIDATE_INT, ['options' => ['min_range' => 0]]);
+
+    if (!$id || $golesA === false || $golesB === false) {
+        http_response_code(400);
+        echo json_encode(['success' => false, 'message' => 'Datos inválidos']);
+        exit;
+    }
+
+    try {
+        // Actualizar el partido en la base de datos
+        $stmt = $this->db->prepare("
+            UPDATE partidos 
+            SET goles_equipo_a = :goles_a, 
+                goles_equipo_b = :goles_b,
+                estado = 'finalizado'
+            WHERE id = :id
+        ");
+
+        $success = $stmt->execute([
+            ':id' => $id,
+            ':goles_a' => $golesA,
+            ':goles_b' => $golesB
+        ]);
+
+        if ($success) {
+            echo json_encode(['success' => true]);
+        } else {
+            throw new Exception('No se pudo actualizar el partido');
+        }
+    } catch (Exception $e) {
+        http_response_code(500);
+        echo json_encode([
+            'success' => false, 
+            'message' => 'Error al actualizar el partido: ' . $e->getMessage()
+        ]);
+    }
+    exit;
+}
 }
