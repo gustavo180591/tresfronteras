@@ -4,7 +4,7 @@
 declare(strict_types=1);
 
 // Título por defecto si no se define otro
-$pageTitle = $pageTitle ?? (defined('EVENT_NAME') ? EVENT_NAME . ' - Panel' : 'Panel Tresfronteras');
+$pageTitle = $pageTitle ?? (defined('EVENT_NAME') ? EVENT_NAME . ' - Panel' : 'TORNEO TRES FRONTERAS - Panel');
 ?>
 <!DOCTYPE html>
 <html lang="es">
@@ -33,12 +33,11 @@ $pageTitle = $pageTitle ?? (defined('EVENT_NAME') ? EVENT_NAME . ' - Panel' : 'P
             <div class="d-flex align-items-center gap-2">
                 <!-- Logo opcional: usarás public/assets/logo.png cuando lo tengas -->
                 <div class="me-2">
-                    <!-- Sólo un placeholder; podés cambiar por una <img> real después -->
-                    <span class="badge bg-danger rounded-circle" style="width:32px;height:32px;display:inline-block;"></span>
+                    <img src="<?= base_url('assets/logo.png') ?>" alt="Logo" style="height: 40px; width: auto;">
                 </div>
                 <div>
                     <h1 class="h4 mb-0">
-                        <?= htmlspecialchars(defined('EVENT_NAME') ? EVENT_NAME : 'Tresfronteras', ENT_QUOTES, 'UTF-8') ?>
+                        TORNEO TRES FRONTERAS
                     </h1>
                     <small class="text-muted">Panel de control · Fixture · Fotos · Recaudación</small>
                 </div>

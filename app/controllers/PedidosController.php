@@ -14,37 +14,44 @@ class PedidosController
     }
     
     /**
-     * Genera y descarga el comprobante PDF
+     * Genera y redirige al comprobante PDF
      */
-    public function generarComprobante() {
+    public function generarComprobante()
+    {
         try {
-            // Verificar si se proporcionó un ID de pedido
             if (!isset($_GET['id']) || !is_numeric($_GET['id'])) {
                 throw new Exception('ID de pedido no válido');
             }
-            
-            $pedidoId = (int)$_GET['id'];
-            
-            // Generar el PDF (esto guardará el archivo en el servidor)
-            $pdfPath = $this->generarComprobantePDF($pedidoId);
-            
-            if (!$pdfPath) {
+
+            $pedidoId = (int) $_GET['id'];
+
+            // Genera el PDF y devuelve la ruta WEB, por ejemplo:
+            // /comprobantes/comprobante_pedido_5_20251212021214.pdf
+            $pdfWebPath = $this->generarComprobantePDF($pedidoId);
+
+            if (!$pdfWebPath) {
                 throw new Exception('No se pudo generar el comprobante');
             }
-            
-            // Forzar la descarga del archivo
-            header('Content-Type: application/pdf');
-            header('Content-Disposition: attachment; filename="' . basename($pdfPath) . '"');
-            header('Content-Length: ' . filesize($pdfPath));
-            readfile($pdfPath);
-            
-            // Opcional: eliminar el archivo después de la descarga
-            // unlink($pdfPath);
-            
+
+            // Opcional: asegurar que el archivo exista en disco
+            $absolutePath = BASE_PATH . '/public' . $pdfWebPath;
+            if (!file_exists($absolutePath)) {
+                throw new Exception('El archivo de comprobante no existe: ' . $absolutePath);
+            }
+
+            // Redireccionar directamente al PDF
+            // base_url() debería apuntar a public/ (ej: http://localhost:8000/)
+            $url = base_url(ltrim($pdfWebPath, '/'));
+
+            if (ob_get_length()) {
+                ob_end_clean();
+            }
+
+            header('Location: ' . $url);
             exit;
-            
+
         } catch (Exception $e) {
-            error_log('Error en PedidosController::generarComprobante: ' . $e->getMessage());
+            error_log('Error en generarComprobante: ' . $e->getMessage());
             $_SESSION['error_message'] = 'Error al generar el comprobante: ' . $e->getMessage();
             header('Location: index.php?c=pedidos&a=index');
             exit;
@@ -632,196 +639,280 @@ public function eliminar()
 }
 
     /**
-     * Genera un comprobante PDF para un pedido
+     * Genera un comprobante PDF para un pedido (ticket 1 página)
+     * Devuelve la RUTA WEB del PDF (ej: /comprobantes/archivo.pdf)
      */
-    private function generarComprobantePDF($pedidoId) {
-    try {
-        // Obtener los datos del pedido
-        $sql = "SELECT pf.*, p.fecha_hora, p.equipo_a, p.equipo_b, c.nombre as categoria_nombre
-                FROM pedidos_fotos pf
-                JOIN partidos p ON pf.partido_id = p.id
-                JOIN categorias c ON p.categoria_id = c.id
-                WHERE pf.id = :id";
-                
-        $stmt = $this->db->prepare($sql);
-        $stmt->bindValue(':id', $pedidoId, PDO::PARAM_INT);
-        $stmt->execute();
-        $pedido = $stmt->fetch(PDO::FETCH_ASSOC);
+    private function generarComprobantePDF($pedidoId)
+    {
+        try {
+            // Traemos más datos para llenar bien el ticket
+            $sql = "SELECT 
+                        pf.*, 
+                        p.fecha_hora, 
+                        p.equipo_a, 
+                        p.equipo_b, 
+                        p.cancha,
+                        c.nombre AS categoria_nombre
+                    FROM pedidos_fotos pf
+                    JOIN partidos p ON pf.partido_id = p.id
+                    JOIN categorias c ON p.categoria_id = c.id
+                    WHERE pf.id = :id";
 
-        if (!$pedido) {
-            throw new Exception('No se encontró el pedido con ID: ' . $pedidoId);
-        }
+            $stmt = $this->db->prepare($sql);
+            $stmt->bindValue(':id', $pedidoId, PDO::PARAM_INT);
+            $stmt->execute();
+            $pedido = $stmt->fetch(PDO::FETCH_ASSOC);
 
-        // Calcular precio unitario (monto_total / cantidad_fotos)
-        $precioUnitario = 0;
-        if ((int)$pedido['cantidad_fotos'] > 0) {
-            $precioUnitario = (float)$pedido['monto_total'] / (int)$pedido['cantidad_fotos'];
-        }
-
-        // Incluir TCPDF
-        require_once(BASE_PATH . '/vendor/tecnickcom/tcpdf/tcpdf.php');
-
-        // Crear nuevo documento PDF tamaño ticket (A7)
-        $pdf = new TCPDF(PDF_PAGE_ORIENTATION, PDF_UNIT, 'A7', true, 'UTF-8', false);
-
-        // Configuración del documento
-        $pdf->SetCreator(PDF_CREATOR);
-        $pdf->SetAuthor('Torneo Tres Fronteras');
-        $pdf->SetTitle('Comprobante de Pedido #' . $pedido['id']);
-        $pdf->SetSubject('Comprobante de Pedido');
-
-        // Sin cabecera ni pie automáticos
-        $pdf->setPrintHeader(false);
-        $pdf->setPrintFooter(false);
-
-        // Márgenes pequeños
-        $pdf->SetMargins(5, 5, 5);
-        $pdf->SetAutoPageBreak(false);
-
-        // Añadir una página
-        $pdf->AddPage();
-
-        // HTML del comprobante (1 página)
-        $html = '
-        <style>
-            body { font-family: helvetica; font-size: 8pt; line-height: 1.2; }
-            .header { text-align: center; margin-bottom: 4px; }
-            .title { font-size: 12px; font-weight: bold; margin: 0; text-transform: uppercase; }
-            .subtitle { font-size: 9px; color: #555; margin: 1px 0; }
-            .divider { border-top: 1px dashed #999; margin: 4px 0; }
-            .row { overflow: hidden; margin-bottom: 2px; }
-            .label { font-weight: bold; float: left; width: 40%; }
-            .value { float: left; width: 60%; }
-            .total { 
-                font-size: 11px;
-                font-weight: bold;
-                text-align: right;
-                margin-top: 6px;
-                padding-top: 4px;
-                border-top: 1px dashed #000;
+            if (!$pedido) {
+                throw new Exception('No se encontró el pedido con ID: ' . $pedidoId);
             }
-            .status {
-                text-align: center;
-                margin: 5px 0;
-                padding: 4px;
-                background-color: ' . ($pedido['estado_pago'] === 'pagado' ? '#d4edda' : '#f8d7da') . ';
-                color: ' . ($pedido['estado_pago'] === 'pagado' ? '#155724' : '#721c24') . ';
-                font-weight: bold;
-                border-radius: 3px;
-                font-size: 8pt;
+
+            // Precio unitario (si se puede calcular)
+            $precioUnitario = 0;
+            if ((int)$pedido['cantidad_fotos'] > 0) {
+                $precioUnitario = (float)$pedido['monto_total'] / (int)$pedido['cantidad_fotos'];
             }
-            .info-footer {
-                text-align: center;
-                margin-top: 6px;
-                font-size: 7pt;
-                color: #777;
+
+            // Limpieza básica de textos
+            $cliente      = htmlspecialchars($pedido['nombre_cliente']);
+            $telefono     = htmlspecialchars($pedido['telefono']);
+            $categoria    = htmlspecialchars($pedido['categoria_nombre']);
+            $partidoTxt   = htmlspecialchars($pedido['equipo_a'] . ' vs ' . $pedido['equipo_b']);
+            $cancha       = htmlspecialchars($pedido['cancha'] ?? '-');
+            $formaPago    = ucfirst($pedido['forma_pago']);
+            $estadoPago   = $pedido['estado_pago'] === 'pagado' ? 'PAGADO' : 'PENDIENTE';
+            $estadoEnt    = isset($pedido['estado_entrega']) && $pedido['estado_entrega'] === 'entregado'
+                            ? 'ENTREGADO'
+                            : 'NO ENTREGADO';
+
+            $fechaPedido  = date('d/m/Y H:i', strtotime($pedido['fecha_pedido']));
+            $fechaPartido = date('d/m/Y H:i', strtotime($pedido['fecha_hora']));
+            $total        = (float)$pedido['monto_total'];
+            $cantFotos    = (int)$pedido['cantidad_fotos'];
+
+            // Incluir TCPDF
+            require_once BASE_PATH . '/vendor/tecnickcom/tcpdf/tcpdf.php';
+
+            // Documento tamaño A4 (formato estándar)
+            $pdf = new TCPDF(PDF_PAGE_ORIENTATION, PDF_UNIT, 'A4', true, 'UTF-8', false);
+
+            $pdf->SetCreator(PDF_CREATOR);
+            $pdf->SetAuthor('Torneo Tres Fronteras');
+            $pdf->SetTitle('Comprobante de Pedido #' . $pedido['id']);
+            $pdf->SetSubject('Comprobante de Pedido');
+
+            $pdf->setPrintHeader(false);
+            $pdf->setPrintFooter(false);
+
+            // Márgenes estándar para A4
+            $pdf->SetMargins(15, 15, 15);
+            $pdf->SetAutoPageBreak(true, 25);
+
+            $pdf->AddPage();
+
+            // Ruta del logo
+            $logoPath = BASE_PATH . '/public/assets/logo.png';
+            $logoImg = '';
+            if (file_exists($logoPath)) {
+                $logoImg = '<img src="' . $logoPath . '" style="max-width: 150px; height: auto; display: block; margin: 0 auto;">';
             }
-            .small-note {
-                font-size: 6.5pt;
-                text-align: center;
-                margin-top: 4px;
-                color: #555;
-            }
-            .clear { clear: both; }
-        </style>
 
-        <div class="header">
-            <div class="title">TORNEO TRES FRONTERAS</div>
-            <div class="subtitle">COMPROBANTE DE PEDIDO DE FOTOS</div>
-            <div class="subtitle">Nº ' . str_pad($pedido['id'], 5, '0', STR_PAD_LEFT) . '</div>
-        </div>
+            // Plantilla HTML mejorada
+            $html = '
+            <style>
+                body { font-family: helvetica; font-size: 10pt; line-height: 1.3; }
+                .header { text-align: center; margin-bottom: 10px; }
+                .title { font-size: 16px; font-weight: bold; margin: 0; text-transform: uppercase; color: #2c3e50; }
+                .subtitle { font-size: 12px; color: #555; margin: 5px 0; }
+                .divider { border-top: 1px solid #eee; margin: 10px 0; }
+                .section-title { 
+                    font-weight: bold; 
+                    font-size: 12pt; 
+                    margin: 15px 0 8px 0;
+                    color: #2c3e50;
+                    border-bottom: 1px solid #eee;
+                    padding-bottom: 3px;
+                }
+                .row { overflow: hidden; margin-bottom: 5px; }
+                .label { font-weight: bold; float: left; width: 30%; color: #555; }
+                .value { float: left; width: 70%; }
+                .total-box {
+                    font-size: 12px;
+                    font-weight: bold;
+                    text-align: right;
+                    margin: 15px 0;
+                    padding: 10px;
+                    background-color: #f8f9fa;
+                    border: 1px solid #dee2e6;
+                    border-radius: 4px;
+                }
+                .status-pago {
+                    text-align: center;
+                    margin: 10px 0;
+                    padding: 8px;
+                    background-color: ' . ($pedido['estado_pago'] === 'pagado' ? '#d4edda' : '#f8d7da') . ';
+                    color: ' . ($pedido['estado_pago'] === 'pagado' ? '#155724' : '#721c24') . ';
+                    font-weight: bold;
+                    border-radius: 4px;
+                    font-size: 12pt;
+                    text-transform: uppercase;
+                }
+                .status-entrega {
+                    text-align: center;
+                    font-size: 10pt;
+                    margin: 10px 0;
+                    padding: 5px;
+                    background-color: #e2e3e5;
+                    border-radius: 4px;
+                }
+                .info-footer {
+                    text-align: center;
+                    margin: 20px 0 10px 0;
+                    padding-top: 10px;
+                    border-top: 1px solid #eee;
+                    font-size: 9pt;
+                    color: #6c757d;
+                }
+                .small-note {
+                    font-size: 9pt;
+                    text-align: center;
+                    margin: 15px 0;
+                    color: #6c757d;
+                    font-style: italic;
+                }
+                .logo-container {
+                    text-align: center;
+                    margin: 20px 0 10px 0;
+                }
+                .clear { clear: both; }
+            </style>
 
-        <div class="divider"></div>
-
-        <!-- Datos del Cliente -->
-        <div class="row">
-            <div class="label">Cliente:</div>
-            <div class="value">' . htmlspecialchars($pedido['nombre_cliente']) . '</div>
-        </div>
-        <div class="row">
-            <div class="label">Teléfono:</div>
-            <div class="value">' . htmlspecialchars($pedido['telefono']) . '</div>
-        </div>
-        <div class="row">
-            <div class="label">Fecha pedido:</div>
-            <div class="value">' . date('d/m/Y H:i', strtotime($pedido['fecha_pedido'])) . '</div>
-        </div>
-
-        <div class="divider"></div>
-
-        <!-- Detalles del Partido -->
-        <div class="row">
-            <div class="label">Categoría:</div>
-            <div class="value">' . htmlspecialchars($pedido['categoria_nombre']) . '</div>
-        </div>
-        <div class="row">
-            <div class="label">Partido:</div>
-            <div class="value">' . htmlspecialchars($pedido['equipo_a'] . ' vs ' . $pedido['equipo_b']) . '</div>
-        </div>
-        <div class="row">
-            <div class="label">Fecha partido:</div>
-            <div class="value">' . date('d/m/Y H:i', strtotime($pedido['fecha_hora'])) . '</div>
-        </div>
-
-        <div class="divider"></div>
-
-        <!-- Detalles del Pedido -->
-        <div class="row">
-            <div class="label">Cant. fotos:</div>
-            <div class="value">' . (int)$pedido['cantidad_fotos'] . ' x $' . number_format($precioUnitario, 2, ',', '.') . '</div>
-        </div>
-        <div class="row">
-            <div class="label">Forma de pago:</div>
-            <div class="value">' . ucfirst($pedido['forma_pago']) . '</div>
-        </div>
-        <div class="row">
-            <div class="label">Estado pago:</div>
-            <div class="value">
-                <span style="color: ' . ($pedido['estado_pago'] === 'pagado' ? 'green' : 'red') . '; font-weight: bold;">
-                    ' . ($pedido['estado_pago'] === 'pagado' ? 'PAGADO' : 'PENDIENTE DE PAGO') . '
-                </span>
+            <div class="header">
+                <div class="title">TORNEO TRES FRONTERAS</div>
+                <div class="subtitle">COMPROBANTE DE PEDIDO DE FOTOS</div>
+                <div class="subtitle" style="font-weight: bold; font-size: 14pt; color: #2c3e50;">Nº ' . str_pad($pedido['id'], 5, '0', STR_PAD_LEFT) . '</div>
+                <div style="margin-top: 15px;">' . $fechaPedido . '</div>
             </div>
-        </div>
 
-        <div class="total">
-            TOTAL: $' . number_format($pedido['monto_total'], 2, ',', '.') . '
-        </div>
+            <div class="divider"></div>
 
-        <div class="status">
-            ' . ($pedido['estado_pago'] === 'pagado' ? 'PAGO REGISTRADO' : 'PAGO PENDIENTE') . '
-        </div>
+            <!-- Datos del pedido -->
+            <div class="section-title">Datos del pedido</div>
+            <div class="row">
+                <div class="label">Fecha pedido:</div>
+                <div class="value">' . $fechaPedido . '</div>
+            </div>
+            <div class="row">
+                <div class="label">Forma de pago:</div>
+                <div class="value">' . $formaPago . '</div>
+            </div>
+            <div class="row">
+                <div class="label">Estado pago:</div>
+                <div class="value">' . $estadoPago . '</div>
+            </div>
+            <div class="row">
+                <div class="label">Entrega:</div>
+                <div class="value">' . $estadoEnt . '</div>
+            </div>
+            <div class="clear"></div>
 
-        <div class="small-note">
-            Comprobante de pedido de fotos.<br/>
-            No válido como factura oficial.
-        </div>
+            <div class="divider"></div>
 
-        <div class="info-footer">
-            Generado el ' . date('d/m/Y H:i') . '<br/>
-            Tres Fronteras - Organización del torneo
-        </div>
-        ';
+            <!-- Cliente -->
+            <div class="section-title">Cliente</div>
+            <div class="row">
+                <div class="label">Nombre:</div>
+                <div class="value">' . $cliente . '</div>
+            </div>
+            <div class="row">
+                <div class="label">Teléfono:</div>
+                <div class="value">' . $telefono . '</div>
+            </div>
+            <div class="clear"></div>
 
-        // Escribir el contenido HTML (una sola página)
-        $pdf->writeHTML($html, true, false, true, false, '');
+            <div class="divider"></div>
 
-        // Generar un nombre de archivo único
-        $filename = 'comprobante_pedido_' . $pedidoId . '_' . date('YmdHis') . '.pdf';
-        $filepath = BASE_PATH . '/public/comprobantes/' . $filename;
-        
-        // Crear el directorio si no existe
-        if (!file_exists(dirname($filepath))) {
-            mkdir(dirname($filepath), 0755, true);
+            <!-- Partido -->
+            <div class="section-title">Partido</div>
+            <div class="row">
+                <div class="label">Categoría:</div>
+                <div class="value">' . $categoria . '</div>
+            </div>
+            <div class="row">
+                <div class="label">Partido:</div>
+                <div class="value">' . $partidoTxt . '</div>
+            </div>
+            <div class="row">
+                <div class="label">Fecha partido:</div>
+                <div class="value">' . $fechaPartido . '</div>
+            </div>
+            <div class="row">
+                <div class="label">Cancha:</div>
+                <div class="value">' . $cancha . '</div>
+            </div>
+            <div class="clear"></div>
+
+            <div class="divider"></div>
+
+            <!-- Detalle de fotos -->
+            <div class="section-title">Detalle de fotos</div>
+            <div class="row">
+                <div class="label">Cantidad:</div>
+                <div class="value">' . $cantFotos . '</div>
+            </div>
+            <div class="row">
+                <div class="label">Precio unit.:</div>
+                <div class="value">$' . number_format($precioUnitario, 2, ',', '.') . '</div>
+            </div>
+            <div class="row">
+                <div class="label">Importe total:</div>
+                <div class="value">$' . number_format($total, 2, ',', '.') . '</div>
+            </div>
+            <div class="clear"></div>
+
+            <div class="total-box">
+                TOTAL A PAGAR: $' . number_format($total, 2, ',', '.') . '
+            </div>
+
+            <div class="status-pago">
+                ' . ($pedido['estado_pago'] === 'pagado' ? 'PAGO REGISTRADO' : 'PAGO PENDIENTE') . '
+            </div>
+
+            <div class="status-entrega">
+                Estado de entrega: ' . $estadoEnt . '
+            </div>
+
+            <div class="small-note">
+                Comprobante de pedido de fotos. No válido como factura oficial.
+            </div>
+
+            <div class="logo-container">
+                ' . $logoImg . '
+            </div>
+
+            <div class="info-footer">
+                Generado el ' . date('d/m/Y H:i') . ' | Organización Torneo Tres Fronteras<br>
+                <span style="font-size: 8pt;">www.torneotresfronteras.com</span>
+            </div>
+            ';
+
+            $pdf->writeHTML($html, true, false, true, false, '');
+
+            // Nombre de archivo
+            $filename = 'comprobante_pedido_' . $pedidoId . '_' . date('YmdHis') . '.pdf';
+            $filepath = BASE_PATH . '/public/comprobantes/' . $filename;
+
+            if (!file_exists(dirname($filepath))) {
+                mkdir(dirname($filepath), 0755, true);
+            }
+
+            $pdf->Output($filepath, 'F');
+
+            // Devolvemos ruta web
+            return '/comprobantes/' . $filename;
+
+        } catch (Exception $e) {
+            error_log('Error al generar el comprobante PDF: ' . $e->getMessage());
+            return false;
         }
-
-        // Guardar el archivo en el servidor
-        $pdf->Output($filepath, 'F');
-        
-        // Retornar la ruta WEB del archivo generado
-        return '/comprobantes/' . $filename;
-        
-    } catch (Exception $e) {
-        error_log('Error al generar el comprobante PDF: ' . $e->getMessage());
-        return false;
-    }
 }}

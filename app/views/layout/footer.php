@@ -6,16 +6,15 @@ declare(strict_types=1);
 
 </main>
 
-<footer class="border-top bg-white text-muted small py-2 mt-auto">
-    <div class="container-fluid px-3 d-flex justify-content-between">
-        <span>
-            <?= htmlspecialchars(defined('EVENT_NAME') ? EVENT_NAME : 'Tresfronteras', ENT_QUOTES, 'UTF-8') ?>
-            &middot;
-            Panel de control
-        </span>
-        <span>
-            &copy; <?= date('Y') ?>
-        </span>
+<footer class="border-top bg-white text-muted small py-3 mt-4">
+    <div class="container">
+        <div class="text-center mb-2">
+            <img src="<?= base_url('assets/logo.png') ?>" alt="TORNEO TRES FRONTERAS" style="height: 50px; width: auto; margin-bottom: 10px;">
+        </div>
+        <div class="text-center">
+            <p class="mb-1">TORNEO TRES FRONTERAS &copy; <?= date('Y') ?></p>
+            <p class="mb-0">Panel de control - Gestión de pedidos y fotos</p>
+        </div>
     </div>
 </footer>
 

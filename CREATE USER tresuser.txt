@@ -1,0 +1,5 @@
+CREATE USER 'tresuser'@'localhost' IDENTIFIED BY 'trespass123';
+GRANT ALL PRIVILEGES ON tresfronteras.* TO 'tresuser'@'localhost';
+FLUSH PRIVILEGES;
+EXIT;
+

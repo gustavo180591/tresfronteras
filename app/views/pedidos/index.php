@@ -197,7 +197,7 @@ foreach ($pedidos as $pedido) {
                                                 </div>
                                             </div>
                                             <div class="flex-grow-1 ms-2">
-                                                <h6 class="mb-0">
+                                                <h6>
                                                     <?= htmlspecialchars($pedido['nombre_cliente'], ENT_QUOTES, 'UTF-8') ?>
                                                 </h6>
                                                 <small class="text-muted">
@@ -265,7 +265,7 @@ foreach ($pedidos as $pedido) {
                                             <a href="index.php?c=pedidos&a=ver&id=<?= $pedido['id'] ?>" class="btn btn-sm btn-outline-primary rounded-circle p-2" data-bs-toggle="tooltip" aria-label="Ver detalles" data-bs-original-title="Ver detalles">
                                                 <i class="fas fa-eye"></i>
                                             </a>
-                                            <a href="index.php?c=pedidos&a=generarComprobante&id=<?= $pedido['id'] ?>" class="btn btn-sm btn-outline-success rounded-circle p-2" data-bs-toggle="tooltip" aria-label="Descargar comprobante" data-bs-original-title="Descargar comprobante">
+                                            <a href="index.php?c=pedidos&a=generarComprobante&id=<?= $pedido['id'] ?>" class="btn btn-sm btn-outline-success rounded-circle p-2" data-bs-toggle="tooltip" aria-label="Descargar comprobante" data-bs-original-title="Descargar comprobante" target="_blank">
                                                 <i class="fas fa-file-pdf"></i>
                                             </a>
                                             <a

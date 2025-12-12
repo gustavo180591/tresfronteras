@@ -24,7 +24,7 @@ function formatCurrency($amount) {
             <a href="index.php?c=pedidos&a=editar&id=<?= $pedido['id'] ?>" class="btn btn-sm btn-primary">
                 <i class="fas fa-edit me-1"></i> Editar
             </a>
-            <a href="index.php?c=pedidos&a=generarComprobante&id=<?= $pedido['id'] ?>" class="btn btn-sm btn-success">
+            <a href="index.php?c=pedidos&a=generarComprobante&id=<?= $pedido['id'] ?>" class="btn btn-sm btn-success" target="_blank">
                 <i class="fas fa-file-pdf me-1"></i> Comprobante
             </a>
             <a href="index.php?c=pedidos&a=index" class="btn btn-sm btn-outline-secondary">
