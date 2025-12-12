@@ -32,76 +32,134 @@ class PartidosController
      */
     public function index()
     {
-        // Página actual (mínimo 1)
-        $page = isset($_GET['page']) ? (int) $_GET['page'] : 1;
-        if ($page < 1) {
-            $page = 1;
-        }
+        // No usamos paginación, mostramos todos los partidos
+        $searchTeam = trim($_GET['search_team'] ?? '');
+    $fechaDesde = $_GET['fecha_desde'] ?? '';
+    $fechaHasta = $_GET['fecha_hasta'] ?? '';
+    $categoriaId = isset($_GET['categoria_id']) ? (int)$_GET['categoria_id'] : 0;
+    $estado = $_GET['estado'] ?? '';
 
-        // Registros por página
-        $perPage = defined('ITEMS_PER_PAGE') ? (int) ITEMS_PER_PAGE : 20;
-        if ($perPage < 1) {
-            $perPage = 20;
-        }
+    // Construir consulta base con condiciones WHERE dinámicas
+    $whereConditions = ['1=1']; // Start with a condition that's always true
+    $params = [];
 
-        $offset = ($page - 1) * $perPage;
+    // Store parameter values in an array for binding
+    $paramValues = [];
+    
+    // Add search conditions
+    if (!empty($searchTeam)) {
+        $whereConditions[] = "(p.equipo_a LIKE ? OR p.equipo_b LIKE ?)";
+        $paramValues[] = "%$searchTeam%";
+        $paramValues[] = "%$searchTeam%";
+    }
 
-        // Total de partidos
-        $stmtTotal = $this->db->query('SELECT COUNT(*) AS total FROM partidos');
-        $rowTotal = $stmtTotal->fetch();
-        $totalPartidos = isset($rowTotal['total']) ? (int) $rowTotal['total'] : 0;
+    // Add date range filter
+    if (!empty($fechaDesde)) {
+        $whereConditions[] = "DATE(p.fecha_hora) >= ?";
+        $paramValues[] = $fechaDesde;
+    }
 
-        $totalPages = $totalPartidos > 0 ? (int) ceil($totalPartidos / $perPage) : 1;
-        if ($page > $totalPages) {
-            $page = $totalPages;
-            $offset = ($page - 1) * $perPage;
-        }
+    if (!empty($fechaHasta)) {
+        $whereConditions[] = "DATE(p.fecha_hora) <= ?";
+        $paramValues[] = $fechaHasta;
+    }
 
-        // Partidos con categoría y tipo de torneo
-        $sql = "
-            SELECT 
-                p.id,
-                p.equipo_a,
-                p.equipo_b,
-                p.fecha_hora,
-                p.cancha,
-                p.estado,
-                p.goles_equipo_a,
-                p.goles_equipo_b,
-                c.nombre AS categoria_nombre,
-                tt.nombre AS tipo_torneo_nombre
-            FROM partidos p
-            INNER JOIN categorias c ON p.categoria_id = c.id
-            INNER JOIN tipos_torneo tt ON c.tipo_torneo_id = tt.id
-            ORDER BY p.fecha_hora ASC, p.id ASC
-            LIMIT :limit OFFSET :offset
-        ";
+    // Add category filter
+    if ($categoriaId > 0) {
+        $whereConditions[] = "p.categoria_id = ?";
+        $paramValues[] = $categoriaId;
+    }
 
-        $stmt = $this->db->prepare($sql);
-        $stmt->bindValue(':limit', $perPage, PDO::PARAM_INT);
-        $stmt->bindValue(':offset', $offset, PDO::PARAM_INT);
+    // Add status filter
+    if (!empty($estado) && in_array($estado, ['pendiente', 'en_juego', 'finalizado'])) {
+        $whereConditions[] = "p.estado = ?";
+        $paramValues[] = $estado;
+    }
+
+    // Build the WHERE clause
+    $whereClause = implode(' AND ', $whereConditions);
+
+    // Update the count query
+    $countSql = "SELECT COUNT(*) AS total 
+                 FROM partidos p
+                 INNER JOIN categorias c ON p.categoria_id = c.id
+                 INNER JOIN tipos_torneo tt ON c.tipo_torneo_id = tt.id
+                 WHERE $whereClause";
+
+    $stmtTotal = $this->db->prepare($countSql);
+    $stmtTotal->execute($paramValues);
+
+    // Obtener todos los partidos sin paginación
+    $sql = "
+        SELECT 
+            p.id,
+            p.equipo_a,
+            p.equipo_b,
+            p.fecha_hora,
+            p.cancha,
+            p.estado,
+            p.goles_equipo_a,
+            p.goles_equipo_b,
+            p.categoria_id,
+            c.nombre AS categoria_nombre,
+            tt.nombre AS tipo_torneo_nombre
+        FROM partidos p
+        INNER JOIN categorias c ON p.categoria_id = c.id
+        INNER JOIN tipos_torneo tt ON c.tipo_torneo_id = tt.id
+        WHERE $whereClause
+        ORDER BY p.fecha_hora ASC, p.id ASC
+    ";
+    
+    $stmt = $this->db->prepare($sql);
+    $stmt->execute($paramValues);
+        
         $stmt->execute();
-
         $partidos = $stmt->fetchAll();
 
-        $data = array(
-            'partidos'      => $partidos,
-            'page'          => $page,
-            'perPage'       => $perPage,
-            'totalPartidos' => $totalPartidos,
-            'totalPages'    => $totalPages,
-        );
+        // Obtener todas las categorías para el filtro
+        $stmtCategorias = $this->db->query("SELECT id, nombre FROM categorias ORDER BY nombre");
+        $categorias = $stmtCategorias->fetchAll(PDO::FETCH_ASSOC);
+
+        // Preparar datos para la vista
+        $data = [
+            'partidos' => $partidos,
+            'totalPartidos' => count($partidos),
+            'categorias' => $categorias,
+            'searchParams' => [
+                'search_team' => $searchTeam,
+                'fecha_desde' => $fechaDesde,
+                'fecha_hasta' => $fechaHasta,
+                'categoria_id' => $categoriaId,
+                'estado' => $estado
+            ]
+        ];
 
         extract($data);
 
-        $pageTitle = 'Fixture de partidos - ' . (defined('EVENT_NAME') ? EVENT_NAME : 'Tresfronteras');
-
-        require BASE_PATH . '/app/views/layout/header.php';
-        require BASE_PATH . '/app/views/layout/navbar.php';
-        require BASE_PATH . '/app/views/partidos/index.php';
-        require BASE_PATH . '/app/views/layout/footer.php';
+    $pageTitle = 'Fixture de partidos - ' . (defined('EVENT_NAME') ? EVENT_NAME : 'Tresfronteras');
+    if (!empty($searchTeam)) {
+        $pageTitle = "Búsqueda: $searchTeam - $pageTitle";
     }
 
+    require BASE_PATH . '/app/views/layout/header.php';
+    require BASE_PATH . '/app/views/layout/navbar.php';
+    require BASE_PATH . '/app/views/partidos/index.php';
+    require BASE_PATH . '/app/views/layout/footer.php';
+}
+
+/**
+ * Get all categories for the filter dropdown
+ */
+private function getCategorias()
+{
+    $stmt = $this->db->query("
+        SELECT c.id, c.nombre, t.nombre as tipo_torneo 
+        FROM categorias c
+        INNER JOIN tipos_torneo t ON c.tipo_torneo_id = t.id
+        ORDER BY t.nombre, c.nombre
+    ");
+    return $stmt->fetchAll();
+}
     /**
      * Muestra el formulario para crear un nuevo partido.
      * URL: index.php?c=partidos&a=crear

@@ -915,4 +915,65 @@ public function eliminar()
             error_log('Error al generar el comprobante PDF: ' . $e->getMessage());
             return false;
         }
-}}
+    }
+
+    /**
+     * Marca un pedido como entregado vía AJAX
+     */
+    public function marcarEntregado() {
+        header('Content-Type: application/json');
+
+        // Solo aceptar POST
+        if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+            http_response_code(405);
+            echo json_encode([
+                'success' => false,
+                'message' => 'Método no permitido'
+            ]);
+            exit;
+        }
+
+        try {
+            // Datos enviados por AJAX
+            $pedidoId = filter_input(INPUT_POST, 'id', FILTER_VALIDATE_INT);
+            
+            if (!$pedidoId) {
+                throw new Exception('ID de pedido inválido');
+            }
+
+            // Verificar si el pedido existe
+            $stmt = $this->db->prepare("SELECT id FROM pedidos_fotos WHERE id = :id");
+            $stmt->execute([':id' => $pedidoId]);
+            
+            if (!$stmt->fetch()) {
+                throw new Exception('El pedido no existe');
+            }
+
+            // Actualizar el estado de entrega
+            $stmt = $this->db->prepare("
+                UPDATE pedidos_fotos
+                SET estado_entrega = 'entregado',
+                    fecha_entrega = NOW()
+                WHERE id = :id
+            
+            ");
+
+            $stmt->execute([':id' => $pedidoId]);
+
+            echo json_encode([
+                'success' => true,
+                'message' => 'Pedido marcado como entregado correctamente',
+                'fecha_entrega' => date('d/m/Y H:i')
+            ]);
+
+        } catch (Exception $e) {
+            http_response_code(400);
+            echo json_encode([
+                'success' => false,
+                'message' => $e->getMessage()
+            ]);
+        }
+
+        exit;
+    }
+}

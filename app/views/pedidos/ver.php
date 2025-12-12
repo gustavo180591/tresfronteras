@@ -149,6 +149,21 @@ function formatCurrency($amount) {
                                 <i class="fas fa-phone-alt me-1"></i>
                                 <?= htmlspecialchars($pedido['telefono']) ?>
                             </p>
+                            <p class="mt-2 mb-0">
+                                <span class="text-muted">Estado de entrega:</span>
+                                <span class="badge bg-<?= ($pedido['estado_entrega'] ?? 'pendiente') === 'entregado' ? 'success' : 'warning' ?> ms-2">
+                                    <?= ucfirst($pedido['estado_entrega'] ?? 'pendiente') ?>
+                                    <?php if (isset($pedido['fecha_entrega'])): ?>
+                                        (<?= formatDate($pedido['fecha_entrega']) ?>)
+                                    <?php endif; ?>
+                                </span>
+                            </p>
+                            <?php if (($pedido['estado_entrega'] ?? 'pendiente') !== 'entregado'): ?>
+                            <button type="button" class="btn btn-success btn-sm mt-2" id="btnMarcarEntregado" data-id="<?= $pedido['id'] ?>">
+                                <i class="fas fa-check-circle me-1"></i> Marcar como Entregado
+                            </button>
+                            <?php endif; ?>
+                            </p>
                         </div>
                     </div>
 
@@ -327,4 +342,67 @@ function createToastContainer() {
     document.body.appendChild(container);
     return container;
 }
+
+// Función para marcar un pedido como entregado
+function marcarComoEntregado(button) {
+    const pedidoId = button.getAttribute('data-id');
+    
+    if (!confirm('¿Está seguro de marcar este pedido como entregado?')) {
+        return;
+    }
+    
+    // Deshabilitar el botón para evitar múltiples clics
+    const originalHtml = button.innerHTML;
+    button.disabled = true;
+    button.innerHTML = '<span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>Procesando...';
+    
+    // Enviar la solicitud AJAX
+    fetch('index.php?c=pedidos&a=marcarEntregado', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/x-www-form-urlencoded',
+        },
+        body: 'id=' + pedidoId
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            // Mostrar notificación de éxito
+            showToast('success', 'El pedido ha sido marcado como entregado correctamente');
+            
+            // Actualizar la interfaz
+            const estadoEntrega = document.createElement('span');
+            estadoEntrega.className = 'badge bg-success ms-2';
+            estadoEntrega.textContent = 'Entregado (' + data.fecha_entrega + ')';
+            
+            // Reemplazar el estado anterior y el botón
+            const estadoContainer = button.parentElement;
+            estadoContainer.querySelector('.badge').replaceWith(estadoEntrega);
+            button.remove();
+            
+            // Recargar la página después de 1.5 segundos
+            setTimeout(() => {
+                window.location.reload();
+            }, 1500);
+        } else {
+            throw new Error(data.message || 'Error al marcar el pedido como entregado');
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        showToast('danger', 'Error: ' + error.message);
+        button.disabled = false;
+        button.innerHTML = originalHtml;
+    });
+}
+
+// Asignar el manejador de eventos al botón cuando el documento esté listo
+document.addEventListener('DOMContentLoaded', function() {
+    const btnMarcarEntregado = document.getElementById('btnMarcarEntregado');
+    if (btnMarcarEntregado) {
+        btnMarcarEntregado.addEventListener('click', function() {
+            marcarComoEntregado(this);
+        });
+    }
+});
 </script>

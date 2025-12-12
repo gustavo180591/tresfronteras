@@ -51,6 +51,92 @@ function label_estado_partido(string $estado): string {
         </div>
     </div>
 
+    <!-- Filtros de búsqueda -->
+    <div class="card mb-3">
+        <div class="card-body p-3">
+            <form method="get" action="" class="row g-2 align-items-end">
+                <input type="hidden" name="c" value="partidos">
+                <input type="hidden" name="a" value="index">
+                
+                <!-- Búsqueda por equipo -->
+                <div class="col-md-3">
+                    <label class="form-label small mb-1">Buscar equipo</label>
+                    <div class="input-group input-group-sm">
+                        <input 
+                            type="text" 
+                            class="form-control" 
+                            name="search_team" 
+                            value="<?= htmlspecialchars($_GET['search_team'] ?? '', ENT_QUOTES, 'UTF-8') ?>" 
+                            placeholder="Nombre del equipo..."
+                        >
+                    </div>
+                </div>
+                
+                <!-- Filtro por fecha -->
+                <div class="col-md-2">
+                    <label class="form-label small mb-1">Desde</label>
+                    <input 
+                        type="date" 
+                        class="form-control form-control-sm" 
+                        name="fecha_desde" 
+                        value="<?= htmlspecialchars($_GET['fecha_desde'] ?? '', ENT_QUOTES, 'UTF-8') ?>"
+                    >
+                </div>
+                
+                <div class="col-md-2">
+                    <label class="form-label small mb-1">Hasta</label>
+                    <input 
+                        type="date" 
+                        class="form-control form-control-sm" 
+                        name="fecha_hasta" 
+                        value="<?= htmlspecialchars($_GET['fecha_hasta'] ?? '', ENT_QUOTES, 'UTF-8') ?>"
+                    >
+                </div>
+                
+                <!-- Filtro por categoría -->
+                <div class="col-md-2">
+                    <label class="form-label small mb-1">Categoría</label>
+                    <select class="form-select form-select-sm" name="categoria_id">
+                        <option value="">Todas</option>
+                        <?php foreach ($categorias as $categoria): ?>
+                            <option value="<?= $categoria['id'] ?>" <?= (isset($_GET['categoria_id']) && $_GET['categoria_id'] == $categoria['id']) ? 'selected' : '' ?>>
+                                <?= htmlspecialchars($categoria['nombre'], ENT_QUOTES, 'UTF-8') ?>
+                            </option>
+                        <?php endforeach; ?>
+                    </select>
+                </div>
+                
+                <!-- Filtro por estado -->
+                <div class="col-md-2">
+                    <label class="form-label small mb-1">Estado</label>
+                    <select class="form-select form-select-sm" name="estado">
+                        <option value="">Todos</option>
+                        <option value="pendiente" <?= (isset($_GET['estado']) && $_GET['estado'] === 'pendiente') ? 'selected' : '' ?>>Pendiente</option>
+                        <option value="en_juego" <?= (isset($_GET['estado']) && $_GET['estado'] === 'en_juego') ? 'selected' : '' ?>>En juego</option>
+                        <option value="finalizado" <?= (isset($_GET['estado']) && $_GET['estado'] === 'finalizado') ? 'selected' : '' ?>>Finalizado</option>
+                    </select>
+                </div>
+                
+                <!-- Botones de acción -->
+                <div class="col-md-1">
+                    <button type="submit" class="btn btn-primary btn-sm w-100">
+                        <i class="fas fa-search me-1"></i> Buscar
+                    </button>
+                </div>
+                
+                <?php if (!empty(array_filter($_GET, function($value, $key) { 
+                    return in_array($key, ['search_team', 'fecha_desde', 'fecha_hasta', 'categoria_id', 'estado']) && !empty($value); 
+                }, ARRAY_FILTER_USE_BOTH))): ?>
+                <div class="col-md-1">
+                    <a href="?c=partidos&a=index" class="btn btn-outline-danger btn-sm w-100">
+                        <i class="fas fa-times me-1"></i> Limpiar
+                    </a>
+                </div>
+                <?php endif; ?>
+            </form>
+        </div>
+    </div>
+
     <div class="table-responsive shadow-sm bg-white rounded">
         <table class="table table-sm table-hover mb-0 align-middle">
             <thead class="table-light">
@@ -60,62 +146,11 @@ function label_estado_partido(string $estado): string {
                     <th>Categoría</th>
                     <th>Tipo torneo</th>
                     <th>Equipos</th>
+                    </th>
                     <th>Cancha</th>
                     <th>Estado</th>
                     <th class="text-center">Resultado</th>
                     <th class="text-end">Acciones</th>
-                </tr>
-                <tr id="filters">
-                    <th><input type="text" class="form-control form-control-sm filter" data-column="0" placeholder="Filtrar..."></th>
-                    <th><input type="date" class="form-control form-control-sm filter" data-column="1" placeholder="Filtrar..."></th>
-                    <th>
-                        <select class="form-select form-select-sm filter" data-column="2">
-                            <option value="">Todas</option>
-                            <?php 
-                            $categoriasUnicas = [];
-                            foreach ($partidos as $p) {
-                                $categoriasUniques[$p['categoria_nombre']] = $p['categoria_nombre'];
-                            }
-                            foreach ($categoriasUniques as $categoria): ?>
-                                <option value="<?= htmlspecialchars($categoria) ?>"><?= htmlspecialchars($categoria) ?></option>
-                            <?php endforeach; ?>
-                        </select>
-                    </th>
-                    <th>
-                        <select class="form-select form-select-sm filter" data-column="3">
-                            <option value="">Todos</option>
-                            <?php 
-                            $tiposUnicos = [];
-                            foreach ($partidos as $p) {
-                                $tiposUnicos[$p['tipo_torneo_nombre']] = $p['tipo_torneo_nombre'];
-                            }
-                            foreach ($tiposUnicos as $tipo): ?>
-                                <option value="<?= htmlspecialchars($tipo) ?>"><?= htmlspecialchars($tipo) ?></option>
-                            <?php endforeach; ?>
-                        </select>
-                    </th>
-                    <th><input type="text" class="form-control form-control-sm filter" data-column="4" placeholder="Equipo A o B"></th>
-                    <th><input type="text" class="form-control form-control-sm filter" data-column="5" placeholder="Filtrar..."></th>
-                    <th>
-                        <select class="form-select form-select-sm filter" data-column="6">
-                            <option value="">Todos</option>
-                            <option value="pendiente">Pendiente</option>
-                            <option value="en_juego">En juego</option>
-                            <option value="finalizado">Finalizado</option>
-                        </select>
-                    </th>
-                    <th class="text-center">
-                        <select class="form-select form-select-sm filter" data-column="7">
-                            <option value="">Todos</option>
-                            <option value="con_resultado">Con resultado</option>
-                            <option value="sin_resultado">Sin resultado</option>
-                        </select>
-                    </th>
-                    <th class="text-end">
-                        <button id="resetFilters" class="btn btn-sm btn-outline-secondary">
-                            <i class="fas fa-undo"></i>
-                        </button>
-                    </th>
                 </tr>
             </thead>
             <tbody>
@@ -230,42 +265,6 @@ function label_estado_partido(string $estado): string {
             </tbody>
         </table>
     </div>
-
-    <!-- Paginación -->
-    <?php if ($totalPages > 1): ?>
-        <nav class="mt-3">
-            <ul class="pagination pagination-sm mb-0">
-                <li class="page-item <?= $page <= 1 ? 'disabled' : '' ?>">
-                    <a
-                        class="page-link"
-                        href="<?= $page <= 1 ? '#' : htmlspecialchars(base_url('index.php?c=partidos&a=index&page=' . ($page - 1)), ENT_QUOTES, 'UTF-8') ?>"
-                    >
-                        &laquo; Anterior
-                    </a>
-                </li>
-
-                <?php for ($p = 1; $p <= $totalPages; $p++): ?>
-                    <li class="page-item <?= $p === $page ? 'active' : '' ?>">
-                        <a
-                            class="page-link"
-                            href="<?= htmlspecialchars(base_url('index.php?c=partidos&a=index&page=' . $p), ENT_QUOTES, 'UTF-8') ?>"
-                        >
-                            <?= $p ?>
-                        </a>
-                    </li>
-                <?php endfor; ?>
-
-                <li class="page-item <?= $page >= $totalPages ? 'disabled' : '' ?>">
-                    <a
-                        class="page-link"
-                        href="<?= $page >= $totalPages ? '#' : htmlspecialchars(base_url('index.php?c=partidos&a=index&page=' . ($page + 1)), ENT_QUOTES, 'UTF-8') ?>"
-                    >
-                        Siguiente &raquo;
-                    </a>
-                </li>
-            </ul>
-        </nav>
-    <?php endif; ?>
 </section>
 
 <script>
@@ -412,10 +411,7 @@ document.addEventListener('DOMContentLoaded', function() {
 </style>
 
 <script>
-document.addEventListener('DOMContentLoaded', function() {
-    const table = document.querySelector('table');
-    const rows = table.querySelectorAll('tbody tr');
-    const filters = {};
+// Team filtering is now handled server-side
     
     // Inicializar filtros
     document.querySelectorAll('.filter').forEach(input => {
