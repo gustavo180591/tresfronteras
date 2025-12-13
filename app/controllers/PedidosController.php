@@ -1,4 +1,8 @@
 <?php
+// Include the TCPDF library
+require_once __DIR__ . '/../../vendor/autoload.php';
+use TCPDF as TCPDF;
+
 class PedidosController
 {
     private $db;
@@ -667,248 +671,187 @@ public function eliminar()
                 throw new Exception('No se encontró el pedido con ID: ' . $pedidoId);
             }
 
-            // Precio unitario (si se puede calcular)
-            $precioUnitario = 0;
-            if ((int)$pedido['cantidad_fotos'] > 0) {
-                $precioUnitario = (float)$pedido['monto_total'] / (int)$pedido['cantidad_fotos'];
+            // Obtener el precio unitario de la base de datos
+            $precioUnitario = 3000; // Valor por defecto
+            $stmt = $this->db->query("SELECT valor FROM configuracion WHERE clave = 'precio_foto'");
+            $result = $stmt->fetch(PDO::FETCH_ASSOC);
+            if ($result) {
+                $precioUnitario = (float)$result['valor'];
+            }
+            
+            // Si el pedido ya tiene un monto total y cantidad de fotos, usamos esos valores
+            if (isset($pedido['monto_total']) && $pedido['monto_total'] > 0 && 
+                isset($pedido['cantidad_fotos']) && $pedido['cantidad_fotos'] > 0) {
+                // Si el monto total es consistente con la cantidad de fotos, usamos el precio unitario calculado
+                $precioCalculado = (float)$pedido['monto_total'] / (int)$pedido['cantidad_fotos'];
+                if (abs($precioCalculado - $precioUnitario) < 0.01) {
+                    $precioUnitario = $precioCalculado;
+                }
             }
 
-            // Limpieza básica de textos
-            $cliente      = htmlspecialchars($pedido['nombre_cliente']);
-            $telefono     = htmlspecialchars($pedido['telefono']);
-            $categoria    = htmlspecialchars($pedido['categoria_nombre']);
-            $partidoTxt   = htmlspecialchars($pedido['equipo_a'] . ' vs ' . $pedido['equipo_b']);
-            $cancha       = htmlspecialchars($pedido['cancha'] ?? '-');
-            $formaPago    = ucfirst($pedido['forma_pago']);
-            $estadoPago   = $pedido['estado_pago'] === 'pagado' ? 'PAGADO' : 'PENDIENTE';
-            $estadoEnt    = isset($pedido['estado_entrega']) && $pedido['estado_entrega'] === 'entregado'
-                            ? 'ENTREGADO'
-                            : 'NO ENTREGADO AUN';
+            // Create new PDF document
+            $pdf = new TCPDF(PDF_PAGE_ORIENTATION, PDF_UNIT, PDF_PAGE_FORMAT, true, 'UTF-8', false);
 
-            $fechaPedido  = date('d/m/Y H:i', strtotime($pedido['fecha_pedido']));
-            $fechaPartido = date('d/m/Y H:i', strtotime($pedido['fecha_hora']));
-            $total        = (float)$pedido['monto_total'];
-            $cantFotos    = (int)$pedido['cantidad_fotos'];
-
-            // Incluir TCPDF
-            require_once BASE_PATH . '/vendor/tecnickcom/tcpdf/tcpdf.php';
-
-            // Documento tamaño A4 (formato estándar)
-            $pdf = new TCPDF(PDF_PAGE_ORIENTATION, PDF_UNIT, 'A4', true, 'UTF-8', false);
-
+            // Set document information
             $pdf->SetCreator(PDF_CREATOR);
             $pdf->SetAuthor('Torneo Tres Fronteras');
-            $pdf->SetTitle('Comprobante de Pedido #' . $pedido['id']);
-            $pdf->SetSubject('Comprobante de Pedido');
+            $pdf->SetTitle('Comprobante #' . str_pad($pedido['id'], 5, '0', STR_PAD_LEFT));
+            $pdf->SetSubject('Comprobante de Pedido de Fotos');
 
+            // Remove default header/footer
             $pdf->setPrintHeader(false);
             $pdf->setPrintFooter(false);
 
-            // Márgenes estándar para A4
-            $pdf->SetMargins(15, 15, 15);
-            $pdf->SetAutoPageBreak(true, 25);
+            // Set margins - reduced top margin to save space
+            $pdf->SetMargins(10, 5, 10, 10);
+            $pdf->SetAutoPageBreak(TRUE, 10);
 
+            // Add a page
             $pdf->AddPage();
 
-            // Ruta del logo
-            $logoPath = BASE_PATH . '/public/assets/logo.png';
-            $logoImg = '';
-            if (file_exists($logoPath)) {
-                $logoImg = '<img src="' . $logoPath . '" style="max-width: 150px; height: auto; display: block; margin: 0 auto;">';
-            }
+            // Minimal logo
+            $logo = BASE_PATH . '/public/assets/3 FRONTERAS.png';
+            $logoImg = file_exists($logo) ? 
+                '<div style="text-align:center;margin:0 0 10px 0;line-height:1">' .
+                '<img src="' . $logo . '" style="height:200px;width:auto;display:inline-block">' .
+                '</div>' : '';
 
-            // Plantilla HTML mejorada
-            $html = '
+            // Format data
+            $fechaPedido = date('d/m/Y H:i', strtotime($pedido['fecha_pedido']));
+            $fechaPartido = date('d/m/Y H:i', strtotime($pedido['fecha_hora']));
+            $estadoPago = $pedido['estado_pago'] === 'pagado' 
+                ? '<span style="background-color: #28a745; color: white; padding: 3px 8px; border-radius: 3px; font-weight: bold;">PAGO REGISTRADO</span>' 
+                : '<span style="background-color: #ffc107; color: #000; padding: 3px 8px; border-radius: 3px; font-weight: bold;">PENDIENTE DE PAGO</span>';
+
+            $estadoEntrega = (isset($pedido['estado_entrega']) && $pedido['estado_entrega'] === 'entregado')
+                ? '<span style="background-color: #17a2b8; color: white; padding: 3px 8px; border-radius: 3px; font-weight: bold;">ENTREGADO</span>'
+                : '<span style="background-color: #6c757d; color: white; padding: 3px 8px; border-radius: 3px; font-weight: bold;">PENDIENTE</span>';
+
+            // Calcular total basado en cantidad de fotos y precio unitario
+            $cantidadFotos = (int)($pedido['cantidad_fotos'] ?? 0);
+            $total = $cantidadFotos * $precioUnitario;
+
+            // HTML content with improved styling
+            $html = $logoImg . '
             <style>
-                body { font-family: helvetica; font-size: 10pt; line-height: 1.3; }
-                .header { text-align: center; margin-bottom: 10px; }
-                .title { font-size: 16px; font-weight: bold; margin: 0; text-transform: uppercase; color: #2c3e50; }
-                .subtitle { font-size: 12px; color: #555; margin: 5px 0; }
-                .divider { border-top: 1px solid #eee; margin: 10px 0; }
+                .header { margin: 0; padding: 0; text-align: center; }
+                .header .title { font-size: 14px; font-weight: bold; margin: 2px 0; }
+                .header .subtitle { font-size: 12px; color: #666; margin: 2px 0; }
+                .doc-number { font-size: 11px; font-weight: bold; margin: 2px 0; }
+                .doc-date { font-size: 10px; color: #666; margin: 2px 0 8px 0; }
+                .info-table { width: 100%; margin: 15px 0; border-collapse: collapse; }
+                .info-table td { padding: 8px; border: 1px solid #eee; }
+                .info-table tr:nth-child(even) { background-color: #f9f9f9; }
                 .section-title { 
+                    background-color: #f8f9fa; 
                     font-weight: bold; 
-                    font-size: 12pt; 
-                    margin: 15px 0 8px 0;
-                    color: #2c3e50;
-                    border-bottom: 1px solid #eee;
-                    padding-bottom: 3px;
+                    padding: 6px 10px; 
+                    margin: 15px 0 10px 0; 
+                    border-left: 4px solid #007bff;
                 }
-                .row { overflow: hidden; margin-bottom: 5px; }
-                .label { font-weight: bold; float: left; width: 30%; color: #555; }
-                .value { float: left; width: 70%; }
-                .total-box {
-                    font-size: 12px;
-                    font-weight: bold;
-                    text-align: right;
-                    margin: 15px 0;
-                    padding: 10px;
-                    background-color: #f8f9fa;
-                    border: 1px solid #dee2e6;
-                    border-radius: 4px;
+                .detail-table { width: 100%; border-collapse: collapse; margin: 15px 0; }
+                .detail-table th { background-color: #f8f9fa; padding: 8px; text-align: left; border: 1px solid #dee2e6; }
+                .detail-table td { padding: 8px; border: 1px solid #dee2e6; }
+                .total-box { 
+                    text-align: right; 
+                    font-size: 16px; 
+                    font-weight: bold; 
+                    margin: 20px 0; 
+                    padding: 10px; 
+                    background-color: #f8f9fa; 
+                    border: 1px solid #dee2e6; 
+                    border-radius: 4px; 
                 }
-                .status-pago {
-                    text-align: center;
-                    margin: 10px 0;
-                    padding: 8px;
-                    background-color: ' . ($pedido['estado_pago'] === 'pagado' ? '#d4edda' : '#f8d7da') . ';
-                    color: ' . ($pedido['estado_pago'] === 'pagado' ? '#155724' : '#721c24') . ';
-                    font-weight: bold;
-                    border-radius: 4px;
-                    font-size: 12pt;
-                    text-transform: uppercase;
+                .footer { 
+                    margin-top: 30px; 
+                    padding-top: 10px; 
+                    border-top: 1px solid #eee; 
+                    font-size: 10px; 
+                    color: #666; 
+                    text-align: center; 
                 }
-                .status-entrega {
-                    text-align: center;
-                    font-size: 10pt;
-                    margin: 10px 0;
-                    padding: 5px;
-                    background-color: #e2e3e5;
-                    border-radius: 4px;
-                }
-                .info-footer {
-                    text-align: center;
-                    margin: 20px 0 10px 0;
-                    padding-top: 10px;
-                    border-top: 1px solid #eee;
-                    font-size: 9pt;
-                    color: #6c757d;
-                }
-                .small-note {
-                    font-size: 9pt;
-                    text-align: center;
-                    margin: 15px 0;
-                    color: #6c757d;
-                    font-style: italic;
-                }
-                .logo-container {
-                    text-align: center;
-                    margin: 20px 0 10px 0;
-                }
-                .clear { clear: both; }
             </style>
 
             <div class="header">
-                <div class="title">TORNEO TRES FRONTERAS</div>
-                <div class="subtitle">COMPROBANTE DE PEDIDO DE FOTOS</div>
-                <div class="subtitle" style="font-weight: bold; font-size: 14pt; color: #2c3e50;">Nº ' . str_pad($pedido['id'], 5, '0', STR_PAD_LEFT) . '</div>
-                <div style="margin-top: 15px;">' . $fechaPedido . '</div>
+                <div class="title">Torneo Tres Fronteras</div>
+                <div class="subtitle">Comprobante de Pedido de Fotos</div>
+                <div class="doc-number">Comprobante Nº ' . str_pad($pedido['id'], 5, '0', STR_PAD_LEFT) . '</div>
+                <div class="doc-date">Fecha: ' . $fechaPedido . '</div>
             </div>
 
-            <div class="divider"></div>
+            <table class="info-table">
+                <tr>
+                    <td width="50%"><strong>Cliente:</strong><br>' . htmlspecialchars($pedido['nombre_cliente']) . '</td>
+                    <td width="50%"><strong>Teléfono:</strong><br>' . htmlspecialchars($pedido['telefono']) . '</td>
+                </tr>
+                <tr>
+                    <td><strong>Forma de pago:</strong><br>' . ucfirst($pedido['forma_pago']) . '</td>
+                    <td><strong>Estado de pago:</strong><br>' . $estadoPago . '</td>
+                </tr>
+                <tr>
+                    <td><strong>Entrega:</strong><br>' . $estadoEntrega . '</td>
+                    <td><strong>Fecha de entrega:</strong><br>' . (isset($pedido['fecha_entrega']) && $pedido['fecha_entrega'] ? date('d/m/Y H:i', strtotime($pedido['fecha_entrega'])) : 'Pendiente') . '</td>
+                </tr>
+            </table>
 
-            <!-- Datos del pedido -->
-            <div class="section-title">Datos del pedido</div>
-            <div class="row">
-                <div class="label">Fecha pedido:</div>
-                <div class="value">' . $fechaPedido . '</div>
-            </div>
-            <div class="row">
-                <div class="label">Forma de pago:</div>
-                <div class="value">' . $formaPago . '</div>
-            </div>
-            <div class="row">
-                <div class="label">Estado pago:</div>
-                <div class="value">' . $estadoPago . '</div>
-            </div>
-            <div class="row">
-                <div class="label">Entrega:</div>
-                <div class="value">' . $estadoEnt . '</div>
-            </div>
-            <div class="clear"></div>
+            <div class="section-title">Detalle del Partido</div>
+            <table class="info-table">
+                <tr>
+                    <td width="50%"><strong>Categoría:</strong><br>' . htmlspecialchars($pedido['categoria_nombre']) . '</td>
+                    <td width="50%"><strong>Partido:</strong><br>' . htmlspecialchars($pedido['equipo_a'] . ' vs ' . $pedido['equipo_b']) . '</td>
+                </tr>
+                <tr>
+                    <td><strong>Fecha del partido:</strong><br>' . $fechaPartido . '</td>
+                    <td><strong>Cancha:</strong><br>' . htmlspecialchars($pedido['cancha']) . '</td>
+                </tr>
+            </table>
 
-            <div class="divider"></div>
-
-            <!-- Cliente -->
-            <div class="section-title">Cliente</div>
-            <div class="row">
-                <div class="label">Nombre:</div>
-                <div class="value">' . $cliente . '</div>
-            </div>
-            <div class="row">
-                <div class="label">Teléfono:</div>
-                <div class="value">' . $telefono . '</div>
-            </div>
-            <div class="clear"></div>
-
-            <div class="divider"></div>
-
-            <!-- Partido -->
-            <div class="section-title">Partido</div>
-            <div class="row">
-                <div class="label">Categoría:</div>
-                <div class="value">' . $categoria . '</div>
-            </div>
-            <div class="row">
-                <div class="label">Partido:</div>
-                <div class="value">' . $partidoTxt . '</div>
-            </div>
-            <div class="row">
-                <div class="label">Fecha partido:</div>
-                <div class="value">' . $fechaPartido . '</div>
-            </div>
-            <div class="row">
-                <div class="label">Cancha:</div>
-                <div class="value">' . $cancha . '</div>
-            </div>
-            <div class="clear"></div>
-
-            <div class="divider"></div>
-
-            <!-- Detalle de fotos -->
-            <div class="section-title">Detalle de fotos</div>
-            <div class="row">
-                <div class="label">Cantidad:</div>
-                <div class="value">' . $cantFotos . '</div>
-            </div>
-            <div class="row">
-                <div class="label">Precio unit.:</div>
-                <div class="value">$' . number_format($precioUnitario, 2, ',', '.') . '</div>
-            </div>
-            <div class="row">
-                <div class="label">Importe total:</div>
-                <div class="value">$' . number_format($total, 2, ',', '.') . '</div>
-            </div>
-            <div class="clear"></div>
+            <div class="section-title">Detalle de Fotos</div>
+            <table class="detail-table">
+                <thead>
+                    <tr>
+                        <th width="60%">Descripción</th>
+                        <th width="10%">Cant.</th>
+                        <th width="15%">Precio U.</th>
+                        <th width="15%">Subtotal</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>Fotos del partido ' . htmlspecialchars($pedido['equipo_a'] . ' vs ' . $pedido['equipo_b']) . '</td>
+                        <td style="text-align: center;">' . $pedido['cantidad_fotos'] . '</td>
+                        <td style="text-align: right;">$' . number_format($precioUnitario, 2, ',', '.') . '</td>
+                        <td style="text-align: right;">$' . number_format($total, 2, ',', '.') . '</td>
+                    </tr>
+                </tbody>
+            </table>
 
             <div class="total-box">
                 TOTAL A PAGAR: $' . number_format($total, 2, ',', '.') . '
             </div>
 
-            <div class="status-pago">
-                ' . ($pedido['estado_pago'] === 'pagado' ? 'PAGO REGISTRADO' : 'PAGO PENDIENTE') . '
-            </div>
+            <div class="footer">
+                <p>Comprobante generado el ' . date('d/m/Y H:i') . '</p>
+                <p>!Muchas gracias por su compra!</p>
+                <p><small>Este comprobante es válido como constancia de pedido. No es válido como factura oficial.</small></p>
+            </div>';
 
-            <div class="status-entrega">
-                Estado de entrega: ' . $estadoEnt . '
-            </div>
-
-            <div class="small-note">
-                Comprobante de pedido de fotos. No válido como factura oficial.
-            </div>
-
-            <div class="logo-container">
-                ' . $logoImg . '
-            </div>
-
-            <div class="info-footer">
-                Generado el ' . date('d/m/Y H:i') . ' | Organización Torneo Tres Fronteras<br>
-                <span style="font-size: 8pt;">www.torneotresfronteras.com</span>
-            </div>
-            ';
-
+            // Output the HTML content
             $pdf->writeHTML($html, true, false, true, false, '');
 
-            // Nombre de archivo
-            $filename = 'comprobante_pedido_' . $pedidoId . '_' . date('YmdHis') . '.pdf';
-            $filepath = BASE_PATH . '/public/comprobantes/' . $filename;
-
-            if (!file_exists(dirname($filepath))) {
-                mkdir(dirname($filepath), 0755, true);
+            // Create directory if it doesn't exist
+            $dir = BASE_PATH . '/public/comprobantes';
+            if (!file_exists($dir)) {
+                mkdir($dir, 0777, true);
             }
 
+            // Save PDF file
+            $filename = 'comprobante_' . str_pad($pedido['id'], 5, '0', STR_PAD_LEFT) . '.pdf';
+            $filepath = $dir . '/' . $filename;
+            
             $pdf->Output($filepath, 'F');
 
-            // Devolvemos ruta web
+            // Return web path
             return '/comprobantes/' . $filename;
 
         } catch (Exception $e) {
