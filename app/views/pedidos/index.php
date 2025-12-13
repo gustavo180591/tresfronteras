@@ -295,58 +295,12 @@ foreach ($pedidos as $pedido) {
                 </table>
             </div>
 
-            <!-- Paginación -->
-            <?php if ($totalPages > 1): ?>
-                <div class="d-flex justify-content-between align-items-center px-3 py-3 border-top">
-                    <div class="text-muted">
-                        Mostrando <?= count($pedidos) ?> de <?= (int) $totalPedidos ?> registros
-                    </div>
-                    <nav aria-label="Paginación de pedidos">
-                        <ul class="pagination mb-0">
-                            <?php if ($currentPage > 1): ?>
-                                <li class="page-item">
-                                    <a class="page-link" href="?c=pedidos&a=index&page=<?= $currentPage - 1 ?>" aria-label="Anterior">
-                                        <span aria-hidden="true">&laquo;</span>
-                                    </a>
-                                </li>
-                            <?php endif; ?>
-
-                            <?php
-                            $start = max(1, $currentPage - 2);
-                            $end   = min($start + 4, $totalPages);
-
-                            if ($start > 1) {
-                                echo '<li class="page-item"><a class="page-link" href="?c=pedidos&a=index&page=1">1</a></li>';
-                                if ($start > 2) {
-                                    echo '<li class="page-item disabled"><span class="page-link">...</span></li>';
-                                }
-                            }
-
-                            for ($i = $start; $i <= $end; $i++): ?>
-                                <li class="page-item <?= $i === $currentPage ? 'active' : '' ?>">
-                                    <a class="page-link" href="?c=pedidos&a=index&page=<?= $i ?>"><?= $i ?></a>
-                                </li>
-                            <?php endfor;
-
-                            if ($end < $totalPages) {
-                                if ($end < $totalPages - 1) {
-                                    echo '<li class="page-item disabled"><span class="page-link">...</span></li>';
-                                }
-                                echo '<li class="page-item"><a class="page-link" href="?c=pedidos&a=index&page=' . $totalPages . '">' . $totalPages . '</a></li>';
-                            }
-                            ?>
-
-                            <?php if ($currentPage < $totalPages): ?>
-                                <li class="page-item">
-                                    <a class="page-link" href="?c=pedidos&a=index&page=<?= $currentPage + 1 ?>" aria-label="Siguiente">
-                                        <span aria-hidden="true">&raquo;</span>
-                                    </a>
-                                </li>
-                            <?php endif; ?>
-                        </ul>
-                    </nav>
+            <!-- Contador de registros -->
+            <div class="d-flex justify-content-between align-items-center px-3 py-3 border-top">
+                <div class="text-muted">
+                    Mostrando <?= (int) $totalPedidos ?> registros
                 </div>
-            <?php endif; ?>
+            </div>
         </div>
     </div>
 </div>

@@ -69,10 +69,7 @@ class PedidosController
         $filtro_forma_pago = $_GET['forma_pago'] ?? 'todas';
         $filtro_buscar = $_GET['buscar'] ?? '';
         
-        // Lógica para listar pedidos
-        $page = isset($_GET['page']) ? (int)$_GET['page'] : 1;
-        $perPage = 10;
-        $offset = ($page - 1) * $perPage;
+        // Mostrar todos los pedidos sin paginación
 
         try {
             // Construir consulta base
@@ -130,23 +127,13 @@ class PedidosController
                 $params[':buscar'] = $searchTerm;
             }
             
-            // Ordenar y paginar
-            $sql .= " ORDER BY pf.fecha_pedido DESC LIMIT :limit OFFSET :offset";
+            // Ordenar resultados
+            $sql .= " ORDER BY pf.fecha_pedido DESC";
             
-            // Obtener total de pedidos con filtros
-            $stmt = $this->db->prepare($sqlCount);
-            foreach ($params as $key => $value) {
-                $stmt->bindValue($key, $value);
-            }
-            $stmt->execute();
-            $totalPedidos = $stmt->fetch(PDO::FETCH_ASSOC)['total'];
-            $totalPages = ceil($totalPedidos / $perPage);
-
-            $stmt = $this->db->prepare($sql);
-            $stmt->bindValue(':limit', $perPage, PDO::PARAM_INT);
-            $stmt->bindValue(':offset', $offset, PDO::PARAM_INT);
-            $stmt->execute();
+            // Obtener todos los pedidos sin paginación
+            $stmt = $this->db->query($sql);
             $pedidos = $stmt->fetchAll(PDO::FETCH_ASSOC);
+            $totalPedidos = count($pedidos);
 
             // Cargar vista
             $pageTitle = 'Listado de Pedidos - ' . (defined('EVENT_NAME') ? EVENT_NAME : 'Tresfronteras');
