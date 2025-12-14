@@ -398,6 +398,82 @@ require_once BASE_PATH . '/app/views/layout/header.php';
             </div>
         </div>
     </div>
+
+    <!-- Sección de Formas de Pago -->
+    <div class="row mt-4">
+        <div class="col-12">
+            <div class="card shadow mb-4">
+                <div class="card-header py-3 d-flex flex-row align-items-center justify-content-between">
+                    <h6 class="m-0 font-weight-bold text-primary">
+                        <i class="fas fa-credit-card me-2"></i>Formas de Pago
+                    </h6>
+                </div>
+                <div class="card-body">
+                    <?php if (!empty($estadisticasPago)): ?>
+                        <div class="table-responsive">
+                            <table class="table table-bordered" width="100%" cellspacing="0">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th>Forma de Pago</th>
+                                        <th class="text-end">Total Recaudado</th>
+                                        <th class="text-center">Cant. Pedidos</th>
+                                        <th class="text-center">Porcentaje</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <?php 
+                                    $totalGeneral = array_sum(array_column($estadisticasPago, 'monto_total'));
+                                    foreach ($estadisticasPago as $pago): 
+                                        $porcentaje = $totalGeneral > 0 ? ($pago['monto_total'] / $totalGeneral) * 100 : 0;
+                                    ?>
+                                        <tr>
+                                            <td>
+                                                <i class="fas fa-<?= $pago['forma_pago'] === 'efectivo' ? 'money-bill-wave' : 'exchange-alt' ?> me-2"></i>
+                                                <?= ucfirst($pago['forma_pago']) ?>
+                                            </td>
+                                            <td class="text-end font-weight-bold">
+                                                <?= formatCurrency($pago['monto_total']) ?>
+                                            </td>
+                                            <td class="text-center">
+                                                <?= $pago['total_pedidos'] ?>
+                                            </td>
+                                            <td>
+                                                <div class="d-flex align-items-center">
+                                                    <div class="progress w-100 me-3" style="height: 20px;">
+                                                        <div class="progress-bar bg-<?= $pago['forma_pago'] === 'efectivo' ? 'success' : 'info' ?>" 
+                                                             role="progressbar" 
+                                                             style="width: <?= $porcentaje ?>%" 
+                                                             aria-valuenow="<?= $porcentaje ?>" 
+                                                             aria-valuemin="0" 
+                                                             aria-valuemax="100">
+                                                        </div>
+                                                    </div>
+                                                    <span class="text-muted small"><?= number_format($porcentaje, 1) ?>%</span>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    <?php endforeach; ?>
+                                    <tr class="table-active">
+                                        <td class="font-weight-bold">Total General</td>
+                                        <td class="text-end font-weight-bold"><?= formatCurrency($totalGeneral) ?></td>
+                                        <td class="text-center font-weight-bold"><?= array_sum(array_column($estadisticasPago, 'total_pedidos')) ?></td>
+                                        <td class="text-center font-weight-bold">100%</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    <?php else: ?>
+                        <div class="text-center py-4">
+                            <div class="text-muted">
+                                <i class="fas fa-credit-card fa-2x mb-2"></i>
+                                <p class="mb-0">No hay datos de pagos disponibles</p>
+                            </div>
+                        </div>
+                    <?php endif; ?>
+                </div>
+            </div>
+        </div>
+    </div>
 </div>
 
 <!-- Inicializar tooltips -->

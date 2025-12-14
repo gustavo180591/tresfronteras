@@ -53,6 +53,21 @@ class RecaudacionController
             $stmt->execute();
             $resumenGeneral = $stmt->fetch(PDO::FETCH_ASSOC);
 
+            // Obtener estadísticas por forma de pago
+            $sql = "SELECT 
+                        forma_pago,
+                        COUNT(*) as total_pedidos,
+                        SUM(monto_total) as monto_total,
+                        ROUND((COUNT(*) * 100.0) / (SELECT COUNT(*) FROM pedidos_fotos WHERE estado_pago = 'pagado'), 2) as porcentaje
+                    FROM pedidos_fotos 
+                    WHERE estado_pago = 'pagado'
+                    GROUP BY forma_pago
+                    ORDER BY monto_total DESC";
+            
+            $stmt = $this->db->prepare($sql);
+            $stmt->execute();
+            $estadisticasPago = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
             // Obtener últimos pedidos
             $sql = "SELECT pf.*, p.fecha_hora, p.equipo_a, p.equipo_b, c.nombre as categoria_nombre
                     FROM pedidos_fotos pf
