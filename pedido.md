@@ -94,16 +94,22 @@ B) Eliminación directa → generar llaves:
 Cada pedido debe almacenar:
 
 - Número de pedido (ID incremental)
-- Partido (Equipo A vs Equipo B)
-- Nombre del cliente
-- Archivos solicitados (ej: IMG_001.jpg, IMG_002.jpg)
-- Cantidad de fotos
-- Forma de pago (Efectivo / Transferencia)
-- Teléfono
-- Pago (Pagado / No pagado)
-- Entrega (Entregado / No entregado)
+- Equipo (opcional)
+- Categoría (opcional)
+- Número dorsal (opcional)
+- Cancha (opcional)
+- Hora (opcional)
+- Nombre del cliente (opcional)
+- Archivos solicitados (ej: IMG_001.jpg, IMG_002.jpg) (opcional)
+- Cantidad de fotos (opcional)
+- Forma de pago (Efectivo / Transferencia / No especificado) (opcional)
+- Teléfono (opcional)
+- Pago (Pagado / No pagado / Pendiente) (opcional)
+- Entrega (Entregado / No entregado / En proceso) (opcional)
 - Fecha/hora del pedido
-- Observaciones
+- Observaciones (opcional)
+
+IMPORTANTE: Ningún campo debe ser obligatorio para permitir máxima flexibilidad en la toma de pedidos durante el evento.
 
 Funcionalidades:
 
