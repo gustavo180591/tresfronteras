@@ -419,22 +419,23 @@ require_once BASE_PATH . '/app/views/layout/header.php';
                                     <th># Pedido</th>
                                     <th>Cliente</th>
                                     <th>Partido</th>
-                                    <th class="text-end">Monto</th>
-                                    <th class="text-center">Estado</th>
+                                    <th class="text-end">Total</th>
+                                    <th class="text-center">Pago</th>
+                                    <th class="text-center">Entrega</th>
                                     <th class="text-center">Acciones</th>
                                 </tr>
                             </thead>
                             <tbody>
                                 <?php if (empty($ultimosPedidos)): ?>
                                     <tr>
-                                        <td colspan="6" class="text-center py-5">
+                                        <td colspan="7" class="text-center py-5">
                                             <div class="py-4">
                                                 <i class="fas fa-inbox fa-3x text-gray-300 mb-3"></i>
                                                 <p class="text-muted mb-0">No hay pedidos recientes</p>
                                             </div>
                                         </td>
                                     </tr>
-                                <?php else: ?>
+                            <?php else: ?>
                                     <?php foreach ($ultimosPedidos as $pedido): 
                                         $fechaPedido = new DateTime($pedido['fecha_pedido']);
                                         $hoy = new DateTime();
@@ -481,13 +482,30 @@ require_once BASE_PATH . '/app/views/layout/header.php';
                                             </td>
                                             <td class="text-center">
                                                 <?php if ($pedido['estado_pago'] === 'pagado'): ?>
-                                                    <span class="badge badge-success">
-                                                        <i class="fas fa-check-circle me-1"></i> Pagado
-                                                    </span>
+                                                    <span class="badge bg-success">Pagado</span>
                                                 <?php else: ?>
-                                                    <span class="badge badge-warning">
-                                                        <i class="far fa-clock me-1"></i> Pendiente
-                                                    </span>
+                                                    <span class="badge bg-warning">Pendiente</span>
+                                                <?php endif; ?>
+                                            </td>
+                                            <td class="text-center">
+                                                <?php if ($pedido['estado_entrega'] === 'entregado'): ?>
+                                                    <span class="badge bg-success">Entregado</span>
+                                                <?php else: ?>
+                                                    <span class="badge bg-secondary">Pendiente</span>
+                                                <?php endif; ?>
+                                            </td>
+                                            <td class="text-center">
+                                                <?php if (($pedido['estado_pago'] ?? '') === 'pagado'): ?>
+                                                    <span class="badge bg-success">Pagado</span>
+                                                <?php else: ?>
+                                                    <span class="badge bg-warning">Pendiente</span>
+                                                <?php endif; ?>
+                                            </td>
+                                            <td class="text-center">
+                                                <?php if (($pedido['estado_entrega'] ?? '') === 'entregado'): ?>
+                                                    <span class="badge bg-success">Entregado</span>
+                                                <?php else: ?>
+                                                    <span class="badge bg-secondary">Pendiente</span>
                                                 <?php endif; ?>
                                             </td>
                                             <td class="text-center">

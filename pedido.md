@@ -185,18 +185,14 @@ El sistema debe ser extremadamente ágil y claro:
 - Navegación fluida y sin recarga innecesaria
 
 =====================================================
-7) ORDEN Y PAGINACIÓN
+7) ORDENAMIENTO
 =====================================================
 
-Implementar:
-
-- Paginación en tablas (fixture, pedidos)
-- Ordenar por:
+Implementar ordenamiento por:
   • fecha  
   • categoría  
   • estado  
   • alfabéticamente  
-- Debe funcionar con miles de registros sin perder velocidad.
 
 =====================================================
 8) ENTREGABLES
@@ -217,5 +213,5 @@ Solicito que generes:
    - Tabla de posiciones
    - Llaves por eliminación
    - Cálculo de recaudación
-6. Listados, paginación, filtros, exportaciones CSV.
+6. Listados, filtros, exportaciones CSV.
 7. Vistas limpias, modernas y pensadas para velocidad en campo.
